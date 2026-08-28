@@ -1,0 +1,25 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: bff-service
+
+# URLs de las funciones serverless. Se sobrescriben por variables de entorno
+# cuando el proyecto se despliega en el Docker Lab (tal como piden las
+# instrucciones de la actividad), sin necesidad de recompilar el BFF.
+funciones:
+  usuarios:
+    base-url: ${FUNCION_USUARIOS_URL:http://function-usuarios:80/api}
+  roles:
+    base-url: ${FUNCION_ROLES_URL:http://function-roles:80/api}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
+logging:
+  level:
+    cl.duoc.dsy2207.bff: INFO
