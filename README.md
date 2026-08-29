@@ -102,36 +102,43 @@ Además del entorno local con Docker Compose, el sistema fue **desplegado de ver
 
 | Componente | Dónde | URL real |
 | --- | --- | --- |
-| BFF (Spring Boot, Docker) | AWS EC2 (`t3.micro`, instancia `i-03a5f366b29b6d0c5`), imagen publicada en Amazon ECR | `http://98.88.35.185:8080` |
+| BFF (Spring Boot, Docker) | AWS EC2 (`t3.micro`, instancia `i-03a5f366b29b6d0c5`), imagen publicada en Amazon ECR | `http://98.94.9.119:8080` |
 | Función Usuarios | Azure Functions (Java) | `https://func-usuarios-dsy2207-18514.azurewebsites.net/api` |
 | Función Roles | Azure Functions (Java) | `https://func-roles-dsy2207-14376.azurewebsites.net/api` |
 
-Prueba rápida de que todo está vivo y conectado (BFF en AWS llamando a las funciones en Azure):
+Prueba rápida de que todo está vivo y conectado de punta a punta (BFF en AWS → funciones en Azure → Oracle en OCI):
 
 ```bash
-curl http://98.88.35.185:8080/api/bff/estado
-# {"servicio":"bff-service","estado":"UP",...}
+curl http://98.94.9.119:8080/api/bff/estado
+# {"servicio":"bff-service","descripcion":"BFF orquestador de Usuarios y Roles - DSY2207 S3","estado":"UP"}
 
-curl http://98.88.35.185:8080/api/bff/roles
-# 500 esperado: la función de Azure responde, pero la base Oracle todavía
-# tiene credenciales de ejemplo (ORACLE_DB_URL=CAMBIAR). Ver sección 5.
+curl http://98.94.9.119:8080/api/bff/roles
+# [{"idRol":1,"nombreRol":"ADMINISTRADOR"},{"idRol":4,"nombreRol":"OPERADOR"},{"idRol":5,"nombreRol":"CONSULTA"}]
+
+curl http://98.94.9.119:8080/api/bff/usuarios
+# [{"idUsuario":1,"nombreUsuario":"Cristobal Camps",...},{"idUsuario":3,"nombreUsuario":"Cynthia Torres Leal",...},{"idUsuario":4,"nombreUsuario":"Usuario Demo Operador",...}]
+
+# Manejo de errores del BFF (GlobalExceptionHandler) verificado en vivo:
+curl -i http://98.94.9.119:8080/api/bff/usuarios/9999
+# HTTP/1.1 404
+# {"timestamp":"...","status":404,"error":"Not Found","mensaje":"{\"error\":\"Usuario 9999 no encontrado\"}"}
 ```
 
-El `500` en `/roles` y `/usuarios` **no es un error del despliegue**: confirma que el BFF en AWS efectivamente llegó hasta la función en Azure (si no hubiera conectividad real, sería un timeout o un `502`, no un error de aplicación con JSON bien formado). Falta apuntar `ORACLE_DB_URL/USER/PASSWORD` (en ambas Function Apps de Azure) a una base Oracle real para que el CRUD funcione de punta a punta — recomendado usar el Oracle XE del `docker-compose.yml` expuesto públicamente, u Oracle Autonomous DB en OCI, y luego correr:
-
-```bash
-az functionapp config appsettings set -g rg-dsy2207-usuarios-roles -n func-usuarios-dsy2207-18514 --settings ORACLE_DB_URL="jdbc:oracle:thin:@//<host>:1521/<service>" ORACLE_DB_USER="..." ORACLE_DB_PASSWORD="..."
-az functionapp config appsettings set -g rg-dsy2207-usuarios-roles -n func-roles-dsy2207-14376 --settings ORACLE_DB_URL="jdbc:oracle:thin:@//<host>:1521/<service>" ORACLE_DB_USER="..." ORACLE_DB_PASSWORD="..."
-```
-
-> **Nota:** la IP pública de la instancia EC2 (`98.88.35.185`) es dinámica y cambiará si la instancia se detiene y reinicia. Antes de grabar el video, verificar la IP actual con `aws ec2 describe-instances --instance-ids i-03a5f366b29b6d0c5 --query 'Reservations[0].Instances[0].PublicIpAddress'`.
+> **Nota:** la IP pública de la instancia EC2 (`98.94.9.119`) es dinámica y cambiará si la instancia se detiene y reinicia. Antes de grabar el video, verificar la IP actual con `aws ec2 describe-instances --instance-ids i-03a5f366b29b6d0c5 --query 'Reservations[0].Instances[0].PublicIpAddress'`.
 
 ## 8. Buenas prácticas aplicadas (guía Semana 3)
 
 - **Enfoque en funciones**: cada función es pequeña, stateless y con una sola responsabilidad (usuarios o roles).
-- **Manejo de errores**: todas las funciones capturan `SQLException` y devuelven códigos HTTP apropiados (404, 500) con un cuerpo JSON de error.
+- **Manejo de errores**: todas las funciones capturan `SQLException` y devuelven códigos HTTP apropiados (404, 500) con un cuerpo JSON de error; el BFF además centraliza el manejo de errores con un `@RestControllerAdvice` (`GlobalExceptionHandler`) que reenvía el código de estado real de la función serverless downstream (`WebClientResponseException`) y normaliza sus propias validaciones de negocio (`ResponseStatusException`, ej. rol inexistente) al mismo formato JSON — verificado en vivo en la sección 7.
 - **Seguridad**: las credenciales de Oracle nunca están hardcodeadas, se inyectan por variables de entorno.
 - **Versionado y despliegue**: separación clara por commits/ramas en Git, Docker para builds reproducibles.
 - **Pruebas**: recomendado probar cada endpoint con Postman antes de grabar el video (colección sugerida: crear rol → crear usuario con ese rol → listar → actualizar → eliminar).
 
+## 9. Checklist de entrega (según Formato de respuesta y observaciones de la formativa anterior)
 
+- [ ] Archivo comprimido (.zip/.rar) con todo el código fuente (microservicio BFF en Java/Spring, script Oracle, funciones en Java) — ✅ incluido en este proyecto.
+- [ ] Diagrama del diseño del sistema — ✅ `docs/arquitectura.md`.
+- [ ] Link al repositorio Git — completar en `Formato_de_respuesta.docx`.
+- [ ] Video grabado en Teams (4 a 8 minutos) — **debe explicar la arquitectura del sistema** (pendiente de la entrega anterior) y mostrar el funcionamiento en tiempo real.
+- [ ] Link del video — completar en `Formato_de_respuesta.docx`.
+- [ ] Participación equitativa de ambos integrantes evidenciada en Git y en el video.
