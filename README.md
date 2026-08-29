@@ -134,11 +134,4 @@ az functionapp config appsettings set -g rg-dsy2207-usuarios-roles -n func-roles
 - **Versionado y despliegue**: separación clara por commits/ramas en Git, Docker para builds reproducibles.
 - **Pruebas**: recomendado probar cada endpoint con Postman antes de grabar el video (colección sugerida: crear rol → crear usuario con ese rol → listar → actualizar → eliminar).
 
-## 9. Checklist de entrega (según Formato de respuesta y observaciones de la formativa anterior)
 
-- [ ] Archivo comprimido (.zip/.rar) con todo el código fuente (microservicio BFF en Java/Spring, script Oracle, funciones en Java) — ✅ incluido en este proyecto.
-- [ ] Diagrama del diseño del sistema — ✅ `docs/arquitectura.md`.
-- [ ] Link al repositorio Git — completar en `Formato_de_respuesta.docx`.
-- [ ] Video grabado en Teams (4 a 8 minutos) — **debe explicar la arquitectura del sistema** (pendiente de la entrega anterior) y mostrar el funcionamiento en tiempo real.
-- [ ] Link del video — completar en `Formato_de_respuesta.docx`.
-- [ ] Participación equitativa de ambos integrantes evidenciada en Git y en el video.
