@@ -13,6 +13,8 @@ import java.util.List;
  * El BFF nunca accede a la base de datos directamente: toda la logica de
  * usuarios vive en la funcion; este cliente solo traduce llamadas HTTP
  * hacia las 4 funciones (Agregar/Listar/Modificar/Eliminar).
+ * se realizan pruebas en postman para verificar que la funcion funciona correctamente, y 
+ * luego se prueba el BFF.
  */
 @Component
 public class UsuariosFunctionClient {
