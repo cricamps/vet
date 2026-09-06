@@ -99,3 +99,65 @@ La relación usuario–rol es **1 a N** (un usuario tiene un rol, un rol puede t
 4. El BFF devuelve al cliente el usuario creado, con su rol ya asociado.
 
 Este flujo es el que se debe **mostrar y explicar en el video** (parte II de la entrega), evidenciando el dominio de la arquitectura — que fue justamente la observación pendiente de la entrega anterior.
+
+## Semana 4 — Actividad Formativa 3: "Añadiendo comunicación Rest y GraphQL"
+
+Esta actividad pide retomar las funciones serverless ya existentes y agregar comunicación **REST en una función** y **GraphQL en otra**. Se decidió no tocar el diseño multicloud ya evaluado (Sumativa 1), sino **añadir una capa sobre lo que ya existe**:
+
+- **REST → `function-usuarios`**: ya cumplía el patrón REST desde la Semana 3 (rutas por recurso `/usuarios` y `/usuarios/{id}`, un verbo HTTP por operación, códigos de estado correctos). Para esta actividad se usa tal cual como evidencia de la capa REST — no requirió cambios de diseño, solo se documenta y se prueba explícitamente por separado (sin pasar por el BFF) para dejar clara la comunicación REST función-a-cliente.
+- **GraphQL → `function-roles`**: se agregó una **quinta función**, `RolesGraphQL`, que expone un único endpoint HTTP (`POST /api/graphql/roles`) capaz de resolver *queries* y *mutations* sobre la misma tabla `ROLES` y el mismo `RolDao` que ya usan las 5 funciones REST de Roles. Las funciones REST de Roles (`AgregarRol`, `ListarRoles`, `ModificarRol`, `EliminarRol`, `ObtenerRol`) **no se eliminaron**: siguen existiendo porque las sigue usando el BFF de la Sumativa 1. GraphQL se suma como una segunda forma de consumir el mismo recurso, no como reemplazo.
+
+### Esquema GraphQL (`function-roles/src/main/resources/schema.graphqls`)
+
+```graphql
+type Rol {
+    idRol: ID
+    nombreRol: String
+}
+
+type Query {
+    roles: [Rol]
+    rol(id: ID!): Rol
+}
+
+type Mutation {
+    agregarRol(nombreRol: String!): Rol
+    modificarRol(id: ID!, nombreRol: String!): Boolean
+    eliminarRol(id: ID!): Boolean
+}
+```
+
+`RolGraphQLSchemaProvider` construye el `GraphQLSchema` ejecutable con `graphql-java` (parseando ese esquema y cableando cada campo a `RolDao` con `RuntimeWiring`), y `RolGraphQLFunction` es la función Azure (HTTP trigger `POST`/`GET`, ruta `graphql/roles`) que recibe `{ "query": "...", "variables": {...} }`, ejecuta la consulta y devuelve la respuesta GraphQL estándar (`{ "data": ..., "errors": ... }`).
+
+### Por qué esta forma y no otra
+
+- Reutiliza el mismo `RolDao` y la misma tabla que las funciones REST: **una sola fuente de verdad**, dos formas de acceso (REST y GraphQL), tal como lo pide la actividad de "añadir" comunicación, no rediseñar el sistema.
+- Cada *data fetcher* de GraphQL sigue abriendo su propia conexión JDBC (mismo patrón stateless de las funciones REST).
+- Al ser una función HTTP-triggered más dentro de `function-roles`, se despliega junto con las demás sin crear infraestructura nueva en Azure — solo hay que re-desplegar la Function App `func-roles-dsy2207-14376` con el código actualizado.
+
+### Ejemplos de uso
+
+REST (Usuarios, sin pasar por el BFF):
+
+```
+GET  https://func-usuarios-dsy2207-18514.azurewebsites.net/api/usuarios
+POST https://func-usuarios-dsy2207-18514.azurewebsites.net/api/usuarios
+     body: {"nombreUsuario":"Ana Pérez","profesionUsuario":"Ingeniera","pais":"Chile","idRol":1}
+```
+
+GraphQL (Roles):
+
+```
+POST https://func-roles-dsy2207-14376.azurewebsites.net/api/graphql/roles
+Content-Type: application/json
+
+{"query":"query { roles { idRol nombreRol } }"}
+
+{"query":"mutation($n:String!){ agregarRol(nombreRol:$n){ idRol nombreRol } }","variables":{"n":"SOPORTE"}}
+
+{"query":"mutation($id:ID!,$n:String!){ modificarRol(id:$id, nombreRol:$n) }","variables":{"id":"4","n":"SOPORTE TI"}}
+
+{"query":"mutation($id:ID!){ eliminarRol(id:$id) }","variables":{"id":"4"}}
+```
+
+Ver `docs/postman-s4.md` y `docs/postman_collection_s4.json` para la colección lista para importar en Postman, y `docs/guion-video-s4.md` para el guion sugerido del video de esta semana.

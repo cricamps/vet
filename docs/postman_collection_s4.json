@@ -1,0 +1,119 @@
+{
+  "info": {
+    "name": "DSY2207 - S4F3 - REST (Usuarios) y GraphQL (Roles)",
+    "description": "Coleccion para la Actividad Formativa 3 (Semana 4): comunicacion REST en function-usuarios y GraphQL en function-roles. Reemplaza los valores de las variables baseUsuarios / baseRoles por las URLs reales de tus Function Apps desplegadas (con su ?code=<clave> si usas AuthorizationLevel distinto de anonymous).",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUsuarios", "value": "https://func-usuarios-dsy2207-18514.azurewebsites.net/api" },
+    { "key": "baseRoles", "value": "https://func-roles-dsy2207-14376.azurewebsites.net/api" }
+  ],
+  "item": [
+    {
+      "name": "REST - Usuarios",
+      "item": [
+        {
+          "name": "Listar usuarios (GET)",
+          "request": { "method": "GET", "url": "{{baseUsuarios}}/usuarios" }
+        },
+        {
+          "name": "Obtener usuario por id (GET)",
+          "request": { "method": "GET", "url": "{{baseUsuarios}}/usuarios/1" }
+        },
+        {
+          "name": "Agregar usuario (POST)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUsuarios}}/usuarios",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombreUsuario\": \"Ana Perez\",\n  \"profesionUsuario\": \"Ingeniera\",\n  \"pais\": \"Chile\",\n  \"idRol\": 1\n}"
+            }
+          }
+        },
+        {
+          "name": "Modificar usuario (PUT)",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUsuarios}}/usuarios/1",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombreUsuario\": \"Ana Perez Actualizada\",\n  \"profesionUsuario\": \"Ingeniera Senior\",\n  \"pais\": \"Chile\",\n  \"idRol\": 1\n}"
+            }
+          }
+        },
+        {
+          "name": "Eliminar usuario (DELETE)",
+          "request": { "method": "DELETE", "url": "{{baseUsuarios}}/usuarios/1" }
+        }
+      ]
+    },
+    {
+      "name": "GraphQL - Roles",
+      "item": [
+        {
+          "name": "Query: listar roles",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseRoles}}/graphql/roles",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"query\": \"query { roles { idRol nombreRol } }\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Query: obtener rol por id",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseRoles}}/graphql/roles",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"query\": \"query($id: ID!) { rol(id: $id) { idRol nombreRol } }\",\n  \"variables\": { \"id\": \"1\" }\n}"
+            }
+          }
+        },
+        {
+          "name": "Mutation: agregar rol",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseRoles}}/graphql/roles",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"query\": \"mutation($n: String!) { agregarRol(nombreRol: $n) { idRol nombreRol } }\",\n  \"variables\": { \"n\": \"SOPORTE\" }\n}"
+            }
+          }
+        },
+        {
+          "name": "Mutation: modificar rol",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseRoles}}/graphql/roles",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"query\": \"mutation($id: ID!, $n: String!) { modificarRol(id: $id, nombreRol: $n) }\",\n  \"variables\": { \"id\": \"4\", \"n\": \"SOPORTE TI\" }\n}"
+            }
+          }
+        },
+        {
+          "name": "Mutation: eliminar rol",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseRoles}}/graphql/roles",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"query\": \"mutation($id: ID!) { eliminarRol(id: $id) }\",\n  \"variables\": { \"id\": \"4\" }\n}"
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

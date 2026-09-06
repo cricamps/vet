@@ -142,3 +142,14 @@ curl -i http://98.94.9.119:8080/api/bff/usuarios/9999
 - [ ] Video grabado en Teams (4 a 8 minutos) — **debe explicar la arquitectura del sistema** (pendiente de la entrega anterior) y mostrar el funcionamiento en tiempo real.
 - [ ] Link del video — completar en `Formato_de_respuesta.docx`.
 - [ ] Participación equitativa de ambos integrantes evidenciada en Git y en el video.
+
+## 10. Semana 4 — Actividad Formativa 3: "Añadiendo comunicación Rest y GraphQL"
+
+Sobre esta misma base se agregó una capa **GraphQL** a `function-roles` (nueva función `RolesGraphQL`, endpoint `POST /api/graphql/roles`), mientras que `function-usuarios` se mantiene como la evidencia de comunicación **REST** (ya cumplía el patrón desde la Semana 3, sin cambios). Ver:
+
+- `docs/arquitectura.md` → sección "Semana 4 — Actividad Formativa 3" (diseño y ejemplos de queries/mutations).
+- `docs/despliegue-s4.md` → cómo compilar y desplegar el `function-roles` actualizado.
+- `docs/postman-s4.md` + `docs/postman_collection_s4.json` → pruebas REST y GraphQL listas para importar en Postman.
+- `docs/guion-video-s4.md` → guion sugerido para el video de esta semana (3 a 8 minutos).
+
+> **Nota:** el código de esta sección se escribió y documentó en un entorno sin acceso a Maven Central, por lo que **no se pudo compilar ni probar automáticamente**; el primer `mvn clean compile` debe hacerse en el equipo local antes de desplegar (detalle en `docs/despliegue-s4.md`).
