@@ -37,6 +37,12 @@
             <artifactId>gson</artifactId>
             <version>2.11.0</version>
         </dependency>
+        <!-- GraphQL (Semana 4 - Actividad Formativa 3): capa GraphQL para Roles -->
+        <dependency>
+            <groupId>com.graphql-java</groupId>
+            <artifactId>graphql-java</artifactId>
+            <version>21.5</version>
+        </dependency>
     </dependencies>
 
     <build>

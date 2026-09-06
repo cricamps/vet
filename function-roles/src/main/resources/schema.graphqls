@@ -1,0 +1,25 @@
+# Esquema GraphQL - Gestion de Roles
+# Actividad Formativa 3 (Semana 4) - DSY2207
+# Capa GraphQL agregada sobre la funcion serverless de Roles ya existente
+# (la funcion de Usuarios conserva/expone la capa REST de la Semana 3).
+
+type Rol {
+    idRol: ID
+    nombreRol: String
+}
+
+type Query {
+    "Lista todos los roles (equivalente GraphQL de GET /api/roles)."
+    roles: [Rol]
+    "Obtiene un rol por id (equivalente GraphQL de GET /api/roles/{id})."
+    rol(id: ID!): Rol
+}
+
+type Mutation {
+    "Crea un rol (equivalente GraphQL de POST /api/roles)."
+    agregarRol(nombreRol: String!): Rol
+    "Modifica un rol existente (equivalente GraphQL de PUT /api/roles/{id})."
+    modificarRol(id: ID!, nombreRol: String!): Boolean
+    "Elimina un rol (equivalente GraphQL de DELETE /api/roles/{id})."
+    eliminarRol(id: ID!): Boolean
+}
