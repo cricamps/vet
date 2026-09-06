@@ -18,7 +18,7 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <azure.functions.maven.plugin.version>1.34.0</azure.functions.maven.plugin.version>
         <azure.functions.java.library.version>3.1.0</azure.functions.java.library.version>
-        <functionAppName>function-roles-dsy2207</functionAppName>
+        <functionAppName>func-roles-dsy2207-14376</functionAppName>
     </properties>
 
     <dependencies>
@@ -63,8 +63,7 @@
                 <version>${azure.functions.maven.plugin.version}</version>
                 <configuration>
                     <appName>${functionAppName}</appName>
-                    <resourceGroup>rg-dsy2207</resourceGroup>
-                    <appServicePlanName>asp-dsy2207</appServicePlanName>
+                    <resourceGroup>rg-dsy2207-usuarios-roles</resourceGroup>
                     <region>brazilsouth</region>
                     <runtime>
                         <os>linux</os>
