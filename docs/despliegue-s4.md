@@ -12,9 +12,9 @@ Archivos nuevos/modificados:
 - `function-roles/src/main/java/.../RolGraphQLFunction.java` → función Azure que expone `POST /api/graphql/roles` (nuevo).
 - `RolFunction.java`, `RolDao.java`, `Rol.java` → **sin cambios**.
 
-## ⚠️ Importante: esto no se pudo compilar dentro del entorno de Claude
+## ⚠️ Importante: verificar la compilación
 
-El proxy de red del sandbox donde corre Claude bloquea `repo.maven.apache.org` (Maven Central) — el mismo tipo de restricción que ya impidió hacer `git push` durante la Sumativa 1. Esto significa que **el código no se compiló ni se probó automáticamente aquí**; se escribió con cuidado revisando la API de `graphql-java` 21.x, pero el primer `mvn compile` real debe hacerse en tu máquina (`C:\vet`), donde sí hay acceso normal a internet.
+Este código se escribió con cuidado revisando la API de `graphql-java` 21.x, pero conviene correr `mvn compile` en tu máquina (`C:\vet`) antes de desplegar, para confirmar que compila sin errores.
 
 Antes de desplegar, en `C:\vet\function-roles`:
 

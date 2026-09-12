@@ -11,4 +11,4 @@ FROM mcr.microsoft.com/azure-functions/java:4-java17
 ENV AzureWebJobsScriptRoot=/home/site/wwwroot
 ENV AzureFunctionsJobHost__Logging__Console__IsEnabled=true
 
-COPY --from=build /src/target/azure-functions/function-roles-dsy2207 /home/site/wwwroot
+COPY --from=build /src/target/azure-functions/func-roles-dsy2207-14376 /home/site/wwwroot

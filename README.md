@@ -26,8 +26,7 @@ proyecto-dsy2207-s3/
 ├── function-roles/                 # Función serverless CRUD de roles (Java)
 ├── bff-service/                    # Microservicio BFF (Spring Boot)
 ├── docs/
-│   ├── arquitectura.md             # Diagrama + explicación de la arquitectura
-│   └── guion-video.md              # Guion sugerido para el video de Teams
+│   └── arquitectura.md             # Diagrama + explicación de la arquitectura
 ├── docker-compose.yml              # Levanta todo el sistema junto
 └── README.md
 ```
@@ -150,6 +149,16 @@ Sobre esta misma base se agregó una capa **GraphQL** a `function-roles` (nueva 
 - `docs/arquitectura.md` → sección "Semana 4 — Actividad Formativa 3" (diseño y ejemplos de queries/mutations).
 - `docs/despliegue-s4.md` → cómo compilar y desplegar el `function-roles` actualizado.
 - `docs/postman-s4.md` + `docs/postman_collection_s4.json` → pruebas REST y GraphQL listas para importar en Postman.
-- `docs/guion-video-s4.md` → guion sugerido para el video de esta semana (3 a 8 minutos).
 
 > **Nota:** el código de esta sección se escribió y documentó en un entorno sin acceso a Maven Central, por lo que **no se pudo compilar ni probar automáticamente**; el primer `mvn clean compile` debe hacerse en el equipo local antes de desplegar (detalle en `docs/despliegue-s4.md`).
+
+
+## 11. Semana 5 — Actividad Sumativa 2: "Implementando comunicación Rest y GraphQL en el desarrollo"
+
+Completa lo que quedó repartido en la Semana 4: ahora **ambas** funciones (`function-usuarios` y `function-roles`) exponen REST y GraphQL. Se agregó `UsuariosGraphQL` (`POST /api/graphql/usuarios`) a `function-usuarios`, con el mismo patrón que `RolesGraphQL`. Ver:
+
+- `docs/arquitectura.md` → sección "Semana 5 — Actividad Sumativa 2" (diseño y ejemplos de queries/mutations).
+- `docs/despliegue-s5.md` → cómo compilar y desplegar el `function-usuarios` actualizado (incluye la corrección de un bug en su `pom.xml` que apuntaba al recurso Azure equivocado — mismo tipo de bug que se corrigió en `function-roles` durante la S4).
+- `docs/postman-s5.md` + `docs/postman_collection_s5.json` → pruebas REST y GraphQL de ambas entidades, listas para importar en Postman.
+
+> **Nota:** igual que en la S4, este código se escribió y documentó en un entorno sin Maven ni JDK 17, por lo que **no se pudo compilar ni probar automáticamente**; el primer `mvn clean compile` debe hacerse en el equipo local antes de desplegar (detalle en `docs/despliegue-s5.md`).

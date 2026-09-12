@@ -1,0 +1,29 @@
+# Esquema GraphQL - Gestion de Usuarios
+# Actividad Sumativa 2 (Semana 5) - DSY2207
+# Capa GraphQL agregada sobre la funcion serverless de Usuarios ya existente
+# (que ya expone/mantiene la capa REST desde la Semana 3), en paralelo a la
+# capa GraphQL que ya tiene function-roles desde la Semana 4 (Formativa 3).
+
+type Usuario {
+    idUsuario: ID
+    nombreUsuario: String
+    profesionUsuario: String
+    pais: String
+    idRol: ID
+}
+
+type Query {
+    "Lista todos los usuarios (equivalente GraphQL de GET /api/usuarios)."
+    usuarios: [Usuario]
+    "Obtiene un usuario por id (equivalente GraphQL de GET /api/usuarios/{id})."
+    usuario(id: ID!): Usuario
+}
+
+type Mutation {
+    "Crea un usuario (equivalente GraphQL de POST /api/usuarios)."
+    agregarUsuario(nombreUsuario: String!, profesionUsuario: String, pais: String, idRol: ID): Usuario
+    "Modifica un usuario existente (equivalente GraphQL de PUT /api/usuarios/{id})."
+    modificarUsuario(id: ID!, nombreUsuario: String!, profesionUsuario: String, pais: String, idRol: ID): Boolean
+    "Elimina un usuario (equivalente GraphQL de DELETE /api/usuarios/{id})."
+    eliminarUsuario(id: ID!): Boolean
+}

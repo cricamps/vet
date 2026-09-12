@@ -160,4 +160,58 @@ Content-Type: application/json
 {"query":"mutation($id:ID!){ eliminarRol(id:$id) }","variables":{"id":"4"}}
 ```
 
-Ver `docs/postman-s4.md` y `docs/postman_collection_s4.json` para la colección lista para importar en Postman, y `docs/guion-video-s4.md` para el guion sugerido del video de esta semana.
+Ver `docs/postman-s4.md` y `docs/postman_collection_s4.json` para la colección lista para importar en Postman.
+
+
+## Semana 5 — Actividad Sumativa 2: "Implementando comunicación Rest y GraphQL en el desarrollo"
+
+Esta actividad retoma directamente lo hecho en la Sumativa 1, pidiendo esta vez **crear y/o modificar todas las funciones serverless ya definidas**, agregándoles las capas REST y GraphQL correspondientes, con un mínimo de 2 funciones con API REST y 2 con GraphQL. A diferencia de la Formativa 3 (donde se repartió REST en Usuarios y GraphQL en Roles), aquí se completa el cuadro para que **ambas entidades queden con las dos capas**:
+
+- **`function-usuarios`**: mantiene sus 5 funciones REST (`AgregarUsuario`, `ListarUsuarios`, `ModificarUsuario`, `EliminarUsuario`, `ObtenerUsuario`) sin cambios, y se le agrega una sexta función, **`UsuariosGraphQL`** (`POST /api/graphql/usuarios`), con el mismo patrón que ya se usó para Roles: reutiliza el mismo `UsuarioDao` y la misma tabla `USUARIOS`.
+- **`function-roles`**: sin cambios respecto a la Semana 4 — ya tenía sus 5 funciones REST y `RolesGraphQL` (`POST /api/graphql/roles`).
+
+Con esto, el sistema cumple el mínimo de la pauta (2 REST + 2 GraphQL) mostrando explícitamente `function-usuarios` y `function-roles` cada una con su par REST/GraphQL, sin duplicar lógica de negocio ni crear infraestructura nueva en Azure (se redespliega la misma Function App de Usuarios de la Sumativa 1).
+
+### Esquema GraphQL (`function-usuarios/src/main/resources/schema.graphqls`)
+
+```graphql
+type Usuario {
+    idUsuario: ID
+    nombreUsuario: String
+    profesionUsuario: String
+    pais: String
+    idRol: ID
+}
+
+type Query {
+    usuarios: [Usuario]
+    usuario(id: ID!): Usuario
+}
+
+type Mutation {
+    agregarUsuario(nombreUsuario: String!, profesionUsuario: String, pais: String, idRol: ID): Usuario
+    modificarUsuario(id: ID!, nombreUsuario: String!, profesionUsuario: String, pais: String, idRol: ID): Boolean
+    eliminarUsuario(id: ID!): Boolean
+}
+```
+
+`UsuarioGraphQLSchemaProvider` construye el `GraphQLSchema` ejecutable con `graphql-java` (mismo patrón que `RolGraphQLSchemaProvider` de la Semana 4: parsea el esquema y cablea cada campo a `UsuarioDao` con `RuntimeWiring`), y `UsuarioGraphQLFunction` es la función Azure (HTTP trigger `POST`/`GET`, ruta `graphql/usuarios`) que recibe `{ "query": "...", "variables": {...} }` y devuelve la respuesta GraphQL estándar.
+
+`idRol` se expone como el `ID` (FK cruda), igual que en las respuestas REST — no se resuelve como un objeto `Rol` anidado, para no acoplar el módulo `function-usuarios` con `function-roles` (son deployables independientes).
+
+### Ejemplos de uso
+
+GraphQL (Usuarios):
+
+```
+POST https://func-usuarios-dsy2207-18514.azurewebsites.net/api/graphql/usuarios
+Content-Type: application/json
+
+{"query":"query { usuarios { idUsuario nombreUsuario profesionUsuario pais idRol } }"}
+
+{"query":"mutation($n:String!,$p:String,$pa:String,$r:ID){ agregarUsuario(nombreUsuario:$n, profesionUsuario:$p, pais:$pa, idRol:$r){ idUsuario nombreUsuario } }","variables":{"n":"Usuario GraphQL Test","p":"QA","pa":"Chile","r":"1"}}
+
+{"query":"mutation($id:ID!){ eliminarUsuario(id:$id) }","variables":{"id":"6"}}
+```
+
+Ver `docs/postman-s5.md` y `docs/postman_collection_s5.json` para la colección lista para importar en Postman.

@@ -23,3 +23,9 @@ Thumbs.db
 
 # Docker
 *.env
+
+# Carpeta de entregas preparadas localmente (no es parte del proyecto)
+entregas-preparadas/
+
+# Guiones de presentacion (material de apoyo personal, no es parte de la entrega)
+docs/guion-video*.md
