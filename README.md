@@ -101,29 +101,29 @@ Además del entorno local con Docker Compose, el sistema fue **desplegado de ver
 
 | Componente | Dónde | URL real |
 | --- | --- | --- |
-| BFF (Spring Boot, Docker) | AWS EC2 (`t3.micro`, instancia `i-03a5f366b29b6d0c5`), imagen publicada en Amazon ECR | `http://98.94.9.119:8080` |
+| BFF (Spring Boot, Docker) | AWS EC2 (`t3.micro`, instancia `i-03a5f366b29b6d0c5`), imagen publicada en Amazon ECR | `http://3.80.61.149:8080` |
 | Función Usuarios | Azure Functions (Java) | `https://func-usuarios-dsy2207-18514.azurewebsites.net/api` |
 | Función Roles | Azure Functions (Java) | `https://func-roles-dsy2207-14376.azurewebsites.net/api` |
 
 Prueba rápida de que todo está vivo y conectado de punta a punta (BFF en AWS → funciones en Azure → Oracle en OCI):
 
 ```bash
-curl http://98.94.9.119:8080/api/bff/estado
+curl http://3.80.61.149:8080/api/bff/estado
 # {"servicio":"bff-service","descripcion":"BFF orquestador de Usuarios y Roles - DSY2207 S3","estado":"UP"}
 
-curl http://98.94.9.119:8080/api/bff/roles
+curl http://3.80.61.149:8080/api/bff/roles
 # [{"idRol":1,"nombreRol":"ADMINISTRADOR"},{"idRol":4,"nombreRol":"OPERADOR"},{"idRol":5,"nombreRol":"CONSULTA"}]
 
-curl http://98.94.9.119:8080/api/bff/usuarios
+curl http://3.80.61.149:8080/api/bff/usuarios
 # [{"idUsuario":1,"nombreUsuario":"Cristobal Camps",...},{"idUsuario":3,"nombreUsuario":"Cynthia Torres Leal",...},{"idUsuario":4,"nombreUsuario":"Usuario Demo Operador",...}]
 
 # Manejo de errores del BFF (GlobalExceptionHandler) verificado en vivo:
-curl -i http://98.94.9.119:8080/api/bff/usuarios/9999
+curl -i http://3.80.61.149:8080/api/bff/usuarios/9999
 # HTTP/1.1 404
 # {"timestamp":"...","status":404,"error":"Not Found","mensaje":"{\"error\":\"Usuario 9999 no encontrado\"}"}
 ```
 
-> **Nota:** la IP pública de la instancia EC2 (`98.94.9.119`) es dinámica y cambiará si la instancia se detiene y reinicia. Antes de grabar el video, verificar la IP actual con `aws ec2 describe-instances --instance-ids i-03a5f366b29b6d0c5 --query 'Reservations[0].Instances[0].PublicIpAddress'`.
+> **Nota:** la IP pública de la instancia EC2 (`3.80.61.149`) es dinámica y cambiará si la instancia se detiene y reinicia. Antes de grabar el video, verificar la IP actual con `aws ec2 describe-instances --instance-ids i-03a5f366b29b6d0c5 --query 'Reservations[0].Instances[0].PublicIpAddress'`.
 
 ## 8. Buenas prácticas aplicadas (guía Semana 3)
 
