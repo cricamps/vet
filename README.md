@@ -162,3 +162,34 @@ Completa lo que quedó repartido en la Semana 4: ahora **ambas** funciones (`fun
 - `docs/postman-s5.md` + `docs/postman_collection_s5.json` → pruebas REST y GraphQL de ambas entidades, listas para importar en Postman.
 
 > **Nota:** igual que en la S4, este código se escribió y documentó en un entorno sin Maven ni JDK 17, por lo que **no se pudo compilar ni probar automáticamente**; el primer `mvn clean compile` debe hacerse en el equipo local antes de desplegar (detalle en `docs/despliegue-s5.md`).
+
+
+## 12. Semana 6 — Actividad Formativa 4: "Conociendo sistemas cloud con arquitectura basada en eventos"
+
+Diseño (sin implementación) de una capa orientada a eventos para VetCare sobre el sistema de Usuarios y Roles. Ver `docs/arquitectura-eda-s6.md` + `docs/arquitectura-eda-s6.png`.
+
+## 13. Semana 7 — Actividad Formativa 5: "Construyendo un sistema cloud con arquitectura basada en eventos"
+
+Implementación en Azure del diseño de la S6 con **Azure Event Grid** (4 piezas de la guía: topic, función generadora, función consumidora, suscripción), integrada con el BFF y las funciones existentes:
+
+```
+Cliente -> BFF (EC2) --valida usuario/rol--> function-usuarios / function-roles
+           BFF --x-functions-key--> func-eventos-productora --sendEvent--> Event Grid Topic (vetcare-events-*)
+           Topic --sub-auditoria--> RegistrarEventoLog     --> Oracle EVENTOS_LOG
+           Topic --sub-clinica----> ProcesarEventoClinico  --> Oracle VeterinariaCloud: CITAS / COMUNICACIONES / INVENTARIO / RESULTADOS_LABORATORIO
+           BFF --GET--> Consultar (func-eventos-consumidora) --> Oracle VeterinariaCloud
+```
+
+| Carpeta / archivo | Contenido |
+|---|---|
+| `function-eventos-productora/` | 4 funciones HTTP que publican `VetCare.TurnoAgendado`, `TurnoCancelado`, `MedicacionDispensada`, `ResultadoLabListo` + tests unitarios |
+| `function-eventos-consumidora/` | `RegistrarEventoLog` y `ProcesarEventoClinico` (`@EventGridTrigger`, idempotentes vía `EVENTOS_PROCESADOS`) sobre la base **VeterinariaCloud** + GET `/api/consultas/{recurso}` |
+| `bff-service/.../EventoBffController.java` | `/api/bff/eventos/...`: valida rol (RF6) y llama a la productora |
+| `db/script_eventos_s7.sql` | Tablas de la capa de eventos en VeterinariaCloud (`EVENTOS_LOG`, `EVENTOS_PROCESADOS`, `NOTIFICACIONES`) + datos de demo (veterinario, medicamentos) |
+| `docs/arquitectura-eda-s7.md` (+ `.png`, `.mmd`) | Requerimiento, diagrama, finalidad de cada pieza e integración |
+| `docs/despliegue-s7.md` | Paso a paso (Azure CLI y portal): topic → productora → consumidora → suscripciones → BFF → git |
+| `docs/postman-s7.md` + `docs/postman_collection_s7.json` | Flujo completo, casos de error y pruebas directas |
+
+Seguridad: el endpoint/key del topic y la conexión a Oracle se configuran como **App Settings**; ninguna credencial está en el repositorio (`local.settings.json` sigue en `.gitignore`, se incluyen solo archivos `local.settings.json.example`).
+
+> **Nota:** el código se escribió en un entorno sin acceso a Maven Central: la lógica de validación y parseo de eventos (tests unitarios) se compiló y probó allí, pero el `mvn clean package` completo de los tres módulos debe correrse en el equipo local antes de desplegar (ver `docs/despliegue-s7.md`).

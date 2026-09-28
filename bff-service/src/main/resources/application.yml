@@ -13,6 +13,16 @@ funciones:
     base-url: ${FUNCION_USUARIOS_URL:http://function-usuarios:80/api}
   roles:
     base-url: ${FUNCION_ROLES_URL:http://function-roles:80/api}
+  # Capa de eventos (semana 7)
+  eventos-productora:
+    base-url: ${FUNCION_EVENTOS_PRODUCTORA_URL:http://function-eventos-productora:80/api}
+    key: ${FUNCION_EVENTOS_PRODUCTORA_KEY:}
+  eventos-consumidora:
+    base-url: ${FUNCION_EVENTOS_CONSUMIDORA_URL:http://function-eventos-consumidora:80/api}
+
+# RF6 (semana 7): roles que pueden generar eventos
+eventos:
+  roles-autorizados: ${EVENTOS_ROLES_AUTORIZADOS:ADMINISTRADOR,OPERADOR}
 
 management:
   endpoints:

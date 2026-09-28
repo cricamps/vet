@@ -1,0 +1,604 @@
+{
+  "info": {
+    "name": "DSY2207 S7 - VetCare Event Grid (VeterinariaCloud)",
+    "description": "Formativa 5: BFF -> funcion generadora -> Event Grid -> funciones consumidoras -> Oracle VeterinariaCloud. Ajustar las variables de la coleccion antes de ejecutar.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "bffUrl",
+      "value": "http://<ip-ec2>:8080"
+    },
+    {
+      "key": "prodUrl",
+      "value": "https://func-eventos-productora-dsy2207.azurewebsites.net/api"
+    },
+    {
+      "key": "prodKey",
+      "value": "<function key de la productora>"
+    },
+    {
+      "key": "consUrl",
+      "value": "https://func-eventos-consumidora-dsy2207.azurewebsites.net/api"
+    },
+    {
+      "key": "idUsuarioAdmin",
+      "value": "1"
+    },
+    {
+      "key": "idUsuarioConsulta",
+      "value": "<id del usuario con rol CONSULTA>"
+    },
+    {
+      "key": "idTurno",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "1. Flujo completo via BFF",
+      "item": [
+        {
+          "name": "1.1 Agendar cita (ADMINISTRADOR)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Usuario-Id",
+                "value": "{{idUsuarioAdmin}}"
+              }
+            ],
+            "url": "{{bffUrl}}/api/bff/eventos/turnos",
+            "description": "Genera VetCare.TurnoAgendado: CITAS + recordatorio en COMUNICACIONES. Guarda idTurno.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"idMascota\": 1,\n  \"idVeterinario\": 1,\n  \"fechaHora\": \"2026-10-05T10:30\",\n  \"motivo\": \"Vacuna antirrabica\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('202 Accepted', () => pm.response.to.have.status(202));",
+                  "const r = pm.response.json();",
+                  "pm.test('evento TurnoAgendado', () => pm.expect(r.eventType).to.eql('VetCare.TurnoAgendado'));",
+                  "pm.collectionVariables.set('idTurno', r.idRecurso);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "1.2 Ver citas",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{bffUrl}}/api/bff/eventos/consultas/citas",
+            "description": ""
+          }
+        },
+        {
+          "name": "1.3 Ver comunicaciones (recordatorio 24 h)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{bffUrl}}/api/bff/eventos/consultas/comunicaciones",
+            "description": ""
+          }
+        },
+        {
+          "name": "1.4 Dispensar Meloxicam x2 (stock bajo)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Usuario-Id",
+                "value": "{{idUsuarioAdmin}}"
+              }
+            ],
+            "url": "{{bffUrl}}/api/bff/eventos/medicacion",
+            "description": "Item 22 (Meloxicam) parte con stock 6 y minimo 5: queda en 4 y se genera alerta STOCK_BAJO.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"idItem\": 22,\n  \"cantidad\": 2,\n  \"idMascota\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('202 Accepted', () => pm.response.to.have.status(202));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "1.5 Ver inventario",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{bffUrl}}/api/bff/eventos/consultas/inventario",
+            "description": ""
+          }
+        },
+        {
+          "name": "1.6 Ver alertas de stock",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{bffUrl}}/api/bff/eventos/consultas/alertas",
+            "description": ""
+          }
+        },
+        {
+          "name": "1.7 Resultado de laboratorio listo",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Usuario-Id",
+                "value": "{{idUsuarioAdmin}}"
+              }
+            ],
+            "url": "{{bffUrl}}/api/bff/eventos/laboratorio",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"idMascota\": 1,\n  \"laboratorioExterno\": \"LabVet Santiago\",\n  \"tipoExamen\": \"Hemograma completo\",\n  \"resultado\": {\n    \"hematocrito\": \"45%\",\n    \"leucocitos\": \"normal\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('202 Accepted', () => pm.response.to.have.status(202));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "1.8 Ver resultados de laboratorio",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{bffUrl}}/api/bff/eventos/consultas/resultados",
+            "description": ""
+          }
+        },
+        {
+          "name": "1.9 Cancelar cita",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Usuario-Id",
+                "value": "{{idUsuarioAdmin}}"
+              }
+            ],
+            "url": "{{bffUrl}}/api/bff/eventos/turnos/{{idTurno}}/cancelar",
+            "description": "Genera VetCare.TurnoCancelado: cita CANCELADA, recordatorio CANCELADO y aviso de cancelacion.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"motivo\": \"El dueno reprograma\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('202 Accepted', () => pm.response.to.have.status(202));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "1.10 Ver eventos procesados (OK / RECHAZADO)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{bffUrl}}/api/bff/eventos/consultas/procesados",
+            "description": ""
+          }
+        },
+        {
+          "name": "1.11 Ver auditoria (EVENTOS_LOG)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{bffUrl}}/api/bff/eventos/consultas/eventos",
+            "description": ""
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Casos de error",
+      "item": [
+        {
+          "name": "2.1 Rol CONSULTA -> 403",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Usuario-Id",
+                "value": "{{idUsuarioConsulta}}"
+              }
+            ],
+            "url": "{{bffUrl}}/api/bff/eventos/turnos",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"idMascota\": 1,\n  \"idVeterinario\": 1,\n  \"fechaHora\": \"2026-10-05T10:30\",\n  \"motivo\": \"Vacuna antirrabica\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('403 Forbidden', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "2.2 Usuario inexistente -> 404",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Usuario-Id",
+                "value": "9999"
+              }
+            ],
+            "url": "{{bffUrl}}/api/bff/eventos/turnos",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"idMascota\": 1,\n  \"idVeterinario\": 1,\n  \"fechaHora\": \"2026-10-05T10:30\",\n  \"motivo\": \"Vacuna antirrabica\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('404', () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "2.3 Sin header X-Usuario-Id -> 400",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{bffUrl}}/api/bff/eventos/turnos",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"idMascota\": 1,\n  \"idVeterinario\": 1,\n  \"fechaHora\": \"2026-10-05T10:30\",\n  \"motivo\": \"Vacuna antirrabica\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "2.4 Sin idVeterinario -> 400",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Usuario-Id",
+                "value": "{{idUsuarioAdmin}}"
+              }
+            ],
+            "url": "{{bffUrl}}/api/bff/eventos/turnos",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"idMascota\": 1,\n  \"fechaHora\": \"2026-10-05T10:30\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "2.5 Mascota inexistente -> 202 y luego RECHAZADO",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Usuario-Id",
+                "value": "{{idUsuarioAdmin}}"
+              }
+            ],
+            "url": "{{bffUrl}}/api/bff/eventos/turnos",
+            "description": "El productor no conoce la base: acepta el evento. La consumidora lo marca RECHAZADO en /consultas/procesados (no se reintenta).",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"idMascota\": 999,\n  \"idVeterinario\": 1,\n  \"fechaHora\": \"2026-10-05T10:30\",\n  \"motivo\": \"Vacuna antirrabica\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('202 Accepted', () => pm.response.to.have.status(202));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "2.6 Productora sin function key -> 401",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Usuario-Id",
+                "value": "1"
+              }
+            ],
+            "url": "{{prodUrl}}/eventos/turnos",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"idMascota\": 1,\n  \"idVeterinario\": 1,\n  \"fechaHora\": \"2026-10-05T10:30\",\n  \"motivo\": \"Vacuna antirrabica\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('401', () => pm.response.to.have.status(401));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "3. Funciones directas (sin BFF)",
+      "item": [
+        {
+          "name": "3.1 Productora: agendar cita",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "x-functions-key",
+                "value": "{{prodKey}}"
+              },
+              {
+                "key": "X-Usuario-Id",
+                "value": "1"
+              }
+            ],
+            "url": "{{prodUrl}}/eventos/turnos",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"idMascota\": 1,\n  \"idVeterinario\": 1,\n  \"fechaHora\": \"2026-10-05T10:30\",\n  \"motivo\": \"Vacuna antirrabica\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('202 Accepted', () => pm.response.to.have.status(202));",
+                  "const r = pm.response.json();",
+                  "pm.test('evento TurnoAgendado', () => pm.expect(r.eventType).to.eql('VetCare.TurnoAgendado'));",
+                  "pm.collectionVariables.set('idTurno', r.idRecurso);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "3.2 Consumidora: citas",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{consUrl}}/consultas/citas",
+            "description": ""
+          }
+        },
+        {
+          "name": "3.3 Consumidora: comunicaciones",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{consUrl}}/consultas/comunicaciones",
+            "description": ""
+          }
+        },
+        {
+          "name": "3.4 Consumidora: inventario",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{consUrl}}/consultas/inventario",
+            "description": ""
+          }
+        },
+        {
+          "name": "3.5 Consumidora: resultados",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{consUrl}}/consultas/resultados",
+            "description": ""
+          }
+        },
+        {
+          "name": "3.6 Consumidora: alertas",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{consUrl}}/consultas/alertas",
+            "description": ""
+          }
+        },
+        {
+          "name": "3.7 Consumidora: procesados",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{consUrl}}/consultas/procesados",
+            "description": ""
+          }
+        },
+        {
+          "name": "3.8 Consumidora: eventos",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{consUrl}}/consultas/eventos",
+            "description": ""
+          }
+        }
+      ]
+    }
+  ]
+}
