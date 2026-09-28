@@ -1,0 +1,35 @@
+flowchart LR
+    C["Cliente<br/>(Postman / recepcion)"] -->|"POST /api/bff/eventos/...<br/>X-Usuario-Id"| BFF
+
+    subgraph AWS["AWS EC2"]
+        BFF["BFF Spring Boot<br/>EventoBffController"]
+    end
+
+    subgraph AZ["Microsoft Azure (brazilsouth)"]
+        FU["function-usuarios<br/>ObtenerUsuario"]
+        FR["function-roles<br/>ObtenerRol"]
+        P["func-eventos-productora<br/>AgendarTurno · CancelarTurno<br/>DispensarMedicamento · RegistrarResultadoLab"]
+        T[("Event Grid Topic<br/>vetcare-events")]
+        S1{{"sub-auditoria<br/>(todos los eventos)"}}
+        S2{{"sub-clinica<br/>(filtro eventType)"}}
+        L["func-eventos-consumidora<br/>RegistrarEventoLog"]
+        K["func-eventos-consumidora<br/>ProcesarEventoClinico"]
+        Q["func-eventos-consumidora<br/>Consultar* (GET)"]
+    end
+
+    subgraph OCI["Oracle Autonomous DB (OCI Santiago)"]
+        DBU[("usuariosroles<br/>USUARIOS · ROLES")]
+        DB[("VeterinariaCloud<br/>CITAS · COMUNICACIONES<br/>INVENTARIO · RESULTADOS_LAB<br/>EVENTOS_LOG · EVENTOS_PROCESADOS")]
+    end
+
+    BFF -->|"1. valida usuario"| FU
+    BFF -->|"2. valida rol"| FR
+    BFF -->|"3. x-functions-key"| P
+    P -->|"4. sendEvent()"| T
+    T --> S1 --> L
+    T --> S2 --> K
+    L -->|"5. auditoria"| DB
+    K -->|"5. cita / stock / resultado / aviso"| DB
+    BFF -->|"6. GET consultas"| Q --> DB
+    FU --- DBU
+    FR --- DBU

@@ -1,0 +1,14 @@
+{
+  "IsEncrypted": false,
+  "Values": {
+    "FUNCTIONS_WORKER_RUNTIME": "java",
+    "AzureWebJobsStorage": "UseDevelopmentStorage=true",
+    "ORACLE_DB_URL": "<misma URL JDBC que function-usuarios>",
+    "ORACLE_DB_USER": "<usuario>",
+    "ORACLE_DB_PASSWORD": "<password>"
+  },
+  "Host": {
+    "LocalHttpPort": 7074,
+    "CORS": "*"
+  }
+}

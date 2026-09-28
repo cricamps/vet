@@ -1,0 +1,13 @@
+{
+  "IsEncrypted": false,
+  "Values": {
+    "FUNCTIONS_WORKER_RUNTIME": "java",
+    "AzureWebJobsStorage": "UseDevelopmentStorage=true",
+    "EVENTGRID_TOPIC_ENDPOINT": "https://<nombre-topic>.brazilsouth-1.eventgrid.azure.net/api/events",
+    "EVENTGRID_TOPIC_KEY": "<Key 1 del topic>"
+  },
+  "Host": {
+    "LocalHttpPort": 7073,
+    "CORS": "*"
+  }
+}
