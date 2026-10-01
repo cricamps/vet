@@ -1,0 +1,630 @@
+{
+  "info": {
+    "name": "DSY2207 S8 - Usuarios y Roles con Azure Event Grid (Sumativa 3)",
+    "description": "BFF (AWS) -> funciones CRUD generadoras (Azure) -> Event Grid topic usuarios-roles-events -> funciones consumidoras (Azure) -> Oracle usuariosroles. Ejecutar las carpetas en orden; ajustar las variables antes.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "0. Estado del BFF",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{bffUrl}}/api/bff/estado"
+      }
+    },
+    {
+      "name": "1. Flujo de eventos via BFF",
+      "item": [
+        {
+          "name": "1.1 Crear usuario SIN rol",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{bffUrl}}/api/bff/usuarios",
+            "description": "Genera UsuarioCreado. La consumidora ProcesarEventoUsuario le asigna el rol por defecto CONSULTA y crea BIENVENIDA.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombreUsuario\": \"Ana Perez\",\n  \"profesionUsuario\": \"Disenadora\",\n  \"pais\": \"Chile\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('201 Created', () => pm.response.to.have.status(201));",
+                  "pm.test('evento UsuarioCreado publicado', () => {",
+                  "    pm.expect(pm.response.headers.get('X-Evento-Tipo')).to.eql('UsuariosRoles.UsuarioCreado');",
+                  "    pm.expect(pm.response.headers.get('X-Evento-Publicado')).to.eql('true');",
+                  "});",
+                  "const u = pm.response.json();",
+                  "pm.test('se crea sin rol', () => pm.expect(u.idRol).to.be.oneOf([null, undefined]));",
+                  "pm.collectionVariables.set('idUsuarioNuevo', u.idUsuario);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "1.2 Ver usuario (rol asignado por evento)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{bffUrl}}/api/bff/usuarios/{{idUsuarioNuevo}}",
+            "description": "Despues del evento, el usuario tiene idRol = idRolPorDefecto (CONSULTA)."
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Event Grid entrega de forma asincrona: se espera unos segundos",
+                  "setTimeout(() => {}, 5000);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('rol por defecto asignado por la consumidora', () => pm.expect(pm.response.json().idRol).to.eql(Number(pm.collectionVariables.get('idRolPorDefecto'))));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "1.3 Notificaciones del usuario",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{bffUrl}}/api/bff/usuarios/{{idUsuarioNuevo}}/notificaciones",
+            "description": "ROL_ASIGNADO + BIENVENIDA."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const tipos = pm.response.json().map(n => n.TIPO);",
+                  "pm.test('BIENVENIDA y ROL_ASIGNADO', () => pm.expect(tipos).to.include.members(['BIENVENIDA','ROL_ASIGNADO']));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "1.4 Cambiar rol a OPERADOR",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{bffUrl}}/api/bff/usuarios/{{idUsuarioNuevo}}",
+            "description": "Genera UsuarioModificado con cambioDeRol = true -> notificacion CAMBIO_ROL.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombreUsuario\": \"Ana Perez\",\n  \"profesionUsuario\": \"Disenadora\",\n  \"pais\": \"Chile\",\n  \"idRol\": 4\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "pm.test('evento UsuarioModificado publicado', () => {",
+                  "    pm.expect(pm.response.headers.get('X-Evento-Tipo')).to.eql('UsuariosRoles.UsuarioModificado');",
+                  "    pm.expect(pm.response.headers.get('X-Evento-Publicado')).to.eql('true');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "1.5 Crear rol AUDITOR",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{bffUrl}}/api/bff/roles",
+            "description": "Genera RolCreado (solo auditoria).",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombreRol\": \"AUDITOR\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('201 Created', () => pm.response.to.have.status(201));",
+                  "pm.test('evento RolCreado publicado', () => {",
+                  "    pm.expect(pm.response.headers.get('X-Evento-Tipo')).to.eql('UsuariosRoles.RolCreado');",
+                  "    pm.expect(pm.response.headers.get('X-Evento-Publicado')).to.eql('true');",
+                  "});",
+                  "pm.collectionVariables.set('idRolNuevo', pm.response.json().idRol);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "1.6 Asignar AUDITOR al usuario",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{bffUrl}}/api/bff/usuarios/{{idUsuarioNuevo}}",
+            "description": "UsuarioModificado -> CAMBIO_ROL de OPERADOR a AUDITOR.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombreUsuario\": \"Ana Perez\",\n  \"profesionUsuario\": \"Disenadora\",\n  \"pais\": \"Chile\",\n  \"idRol\": {{idRolNuevo}}\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "1.7 Renombrar rol AUDITOR",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{bffUrl}}/api/bff/roles/{{idRolNuevo}}",
+            "description": "Genera RolModificado -> ProcesarEventoRol avisa ROL_RENOMBRADO a los usuarios con ese rol.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombreRol\": \"AUDITOR EXTERNO\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "pm.test('evento RolModificado publicado', () => {",
+                  "    pm.expect(pm.response.headers.get('X-Evento-Tipo')).to.eql('UsuariosRoles.RolModificado');",
+                  "    pm.expect(pm.response.headers.get('X-Evento-Publicado')).to.eql('true');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "1.8 Eliminar rol EN USO",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{bffUrl}}/api/bff/roles/{{idRolNuevo}}",
+            "description": "Antes de la S8 fallaba por la FK. Ahora function-roles desasigna y publica RolEliminado con usuariosAfectados; la consumidora los reasigna a CONSULTA."
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Event Grid entrega de forma asincrona: se espera unos segundos",
+                  "setTimeout(() => {}, 5000);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('204 No Content', () => pm.response.to.have.status(204));",
+                  "pm.test('evento RolEliminado publicado', () => {",
+                  "    pm.expect(pm.response.headers.get('X-Evento-Tipo')).to.eql('UsuariosRoles.RolEliminado');",
+                  "    pm.expect(pm.response.headers.get('X-Evento-Publicado')).to.eql('true');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "1.9 Ver usuario (reasignado a CONSULTA)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{bffUrl}}/api/bff/usuarios/{{idUsuarioNuevo}}",
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Event Grid entrega de forma asincrona: se espera unos segundos",
+                  "setTimeout(() => {}, 5000);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('reasignado al rol por defecto', () => pm.expect(pm.response.json().idRol).to.eql(Number(pm.collectionVariables.get('idRolPorDefecto'))));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "1.10 Notificaciones del usuario (historial)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{bffUrl}}/api/bff/usuarios/{{idUsuarioNuevo}}/notificaciones",
+            "description": "BIENVENIDA, ROL_ASIGNADO, CAMBIO_ROL x2, ROL_RENOMBRADO, REASIGNACION_ROL."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const tipos = pm.response.json().map(n => n.TIPO);",
+                  "pm.test('REASIGNACION_ROL registrada', () => pm.expect(tipos).to.include('REASIGNACION_ROL'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "1.11 Eliminar rol por defecto (409)",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{bffUrl}}/api/bff/roles/{{idRolPorDefecto}}",
+            "description": "Regla de negocio: CONSULTA no se puede eliminar."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('409 Conflict', () => pm.response.to.have.status(409));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "1.12 Eliminar usuario",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{bffUrl}}/api/bff/usuarios/{{idUsuarioNuevo}}",
+            "description": "Genera UsuarioEliminado -> notificacion BAJA."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('204 No Content', () => pm.response.to.have.status(204));",
+                  "pm.test('evento UsuarioEliminado publicado', () => {",
+                  "    pm.expect(pm.response.headers.get('X-Evento-Tipo')).to.eql('UsuariosRoles.UsuarioEliminado');",
+                  "    pm.expect(pm.response.headers.get('X-Evento-Publicado')).to.eql('true');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "2. Ultimo eslabon: consultas",
+      "item": [
+        {
+          "name": "2.1 Auditoria (todos los eventos)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{bffUrl}}/api/bff/usuarios-roles/eventos/auditoria",
+            "description": "UR_AUDITORIA_EVENTOS: sub-auditoria recibe los 6 tipos."
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Event Grid entrega de forma asincrona: se espera unos segundos",
+                  "setTimeout(() => {}, 5000);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "2.2 Eventos procesados",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{bffUrl}}/api/bff/usuarios-roles/eventos/procesados",
+            "description": "UR_EVENTOS_PROCESADOS: resultado por consumidor (PROCESADO / SIN_ACCION / RECHAZADO)."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "2.3 Notificaciones",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{bffUrl}}/api/bff/usuarios-roles/eventos/notificaciones",
+            "description": "UR_NOTIFICACIONES de todos los usuarios."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "2.4 Usuarios con su rol (estado final)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{bffUrl}}/api/bff/usuarios-roles/eventos/usuarios",
+            "description": "USUARIOS + ROLES."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "3. Funciones directas (GraphQL y consumidora)",
+      "item": [
+        {
+          "name": "3.1 GraphQL: agregarUsuario sin rol (canal GraphQL)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{usuariosFuncUrl}}/graphql/usuarios",
+            "description": "La mutation pasa por UsuarioService: publica el mismo UsuarioCreado (data.canal = GraphQL).",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"query\": \"mutation { agregarUsuario(nombreUsuario: \\\"Usuario GraphQL\\\", profesionUsuario: \\\"QA\\\", pais: \\\"Chile\\\") { idUsuario nombreUsuario idRol } }\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set('idUsuarioGraphQL', pm.response.json().data.agregarUsuario.idUsuario);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "3.2 Ver usuario GraphQL (rol asignado)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{usuariosFuncUrl}}/usuarios/{{idUsuarioGraphQL}}",
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Event Grid entrega de forma asincrona: se espera unos segundos",
+                  "setTimeout(() => {}, 5000);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('rol por defecto asignado', () => pm.expect(pm.response.json().idRol).to.eql(Number(pm.collectionVariables.get('idRolPorDefecto'))));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "3.3 GraphQL: eliminarUsuario",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{usuariosFuncUrl}}/graphql/usuarios",
+            "description": "UsuarioEliminado (canal GraphQL).",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"query\": \"mutation { eliminarUsuario(id: \\\"{{idUsuarioGraphQL}}\\\") }\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('true', () => pm.expect(pm.response.json().data.eliminarUsuario).to.eql(true));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "3.4 Consulta directa a la consumidora",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{consUrl}}/consultas/procesados",
+            "description": "Sin pasar por el BFF."
+          }
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "bffUrl",
+      "value": "http://100.52.252.86:8080"
+    },
+    {
+      "key": "usuariosFuncUrl",
+      "value": "https://func-usuarios-dsy2207-18514.azurewebsites.net/api"
+    },
+    {
+      "key": "consUrl",
+      "value": "https://func-eventos-usuarios-roles-dsy2207.azurewebsites.net/api"
+    },
+    {
+      "key": "idRolPorDefecto",
+      "value": "5"
+    },
+    {
+      "key": "idUsuarioNuevo",
+      "value": ""
+    },
+    {
+      "key": "idRolNuevo",
+      "value": ""
+    },
+    {
+      "key": "idUsuarioGraphQL",
+      "value": ""
+    }
+  ]
+}

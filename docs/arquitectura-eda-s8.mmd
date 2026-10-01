@@ -1,0 +1,55 @@
+flowchart LR
+    subgraph CLI["Cliente"]
+        PM["Postman<br/>CRUD Usuarios y Roles<br/>+ consultas de eventos"]
+    end
+
+    subgraph AWS["AWS · EC2 + Docker"]
+        BFF["BFF Spring Boot<br/>/api/bff/usuarios · /api/bff/roles<br/>/api/bff/usuarios-roles/eventos/*<br/>reenvía headers X-Evento-*"]
+    end
+
+    subgraph AZ["Azure · Brazil South · rg-dsy2207-usuarios-roles"]
+        direction LR
+        subgraph PROD["Funciones GENERADORAS (Java)"]
+            direction TB
+            FU["func-usuarios-dsy2207-18514<br/>Agregar · Modificar · Eliminar · Listar · Obtener<br/>UsuariosGraphQL"]
+            FR["func-roles-dsy2207-14376<br/>Agregar · Modificar · Eliminar · Listar · Obtener<br/>RolesGraphQL"]
+        end
+        TOPIC{{"Event Grid Topic<br/>usuarios-roles-events<br/>Event Grid Schema"}}
+        subgraph SUBS["Suscripciones"]
+            direction TB
+            S1["sub-auditoria<br/>sin filtro"]
+            S2["sub-usuarios<br/>UsuarioCreado · UsuarioModificado · UsuarioEliminado"]
+            S3["sub-roles<br/>RolModificado · RolEliminado"]
+        end
+        subgraph CONS["func-eventos-usuarios-roles-dsy2207 · CONSUMIDORAS (Java)"]
+            direction TB
+            C1["AuditarEventoUsuariosRoles"]
+            C2["ProcesarEventoUsuario<br/>rol por defecto · bienvenida<br/>cambio de rol · baja"]
+            C3["ProcesarEventoRol<br/>reasigna usuarios del rol eliminado<br/>avisa rol renombrado"]
+            CQ["ConsultarEventosUsuariosRoles<br/>GET /api/consultas/{recurso}"]
+        end
+    end
+
+    subgraph OCI["Oracle OCI · Autonomous DB usuariosroles"]
+        DB1[("USUARIOS · ROLES")]
+        DB2[("UR_AUDITORIA_EVENTOS<br/>UR_EVENTOS_PROCESADOS<br/>UR_NOTIFICACIONES")]
+    end
+
+    PM -->|HTTP/JSON| BFF
+    BFF -->|REST| FU
+    BFF -->|REST| FR
+    BFF -->|GET consultas| CQ
+    FU -->|1. CRUD JDBC| DB1
+    FR -->|1. CRUD JDBC| DB1
+    FU -->|2. publica UsuarioCreado/Modificado/Eliminado| TOPIC
+    FR -->|2. publica RolCreado/Modificado/Eliminado| TOPIC
+    TOPIC --> S1 --> C1
+    TOPIC --> S2 --> C2
+    TOPIC --> S3 --> C3
+    C1 -->|3. INSERT| DB2
+    C2 -->|3. UPDATE ID_ROL| DB1
+    C2 -->|3. INSERT| DB2
+    C3 -->|3. UPDATE ID_ROL| DB1
+    C3 -->|3. INSERT| DB2
+    CQ -->|SELECT| DB2
+    CQ -->|SELECT| DB1

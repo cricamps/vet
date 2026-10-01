@@ -3,6 +3,7 @@ package cl.duoc.dsy2207.bff.controller;
 import cl.duoc.dsy2207.bff.client.RolesFunctionClient;
 import cl.duoc.dsy2207.bff.client.UsuariosFunctionClient;
 import cl.duoc.dsy2207.bff.dto.UsuarioDto;
+import cl.duoc.dsy2207.bff.util.EventoHeaders;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -18,6 +19,10 @@ import java.util.List;
  * valida contra la Funcion de Roles que ese rol exista (llamada
  * encadenada a un segundo dominio) antes de agregar el usuario -- este
  * es el escenario de orquestacion a demostrar en el video.
+ *
+ * Semana 8: si "idRol" se omite, el usuario se crea sin rol y la funcion
+ * consumidora de eventos le asigna el rol por defecto (CONSULTA) de forma
+ * asincrona. Las respuestas reenvian los headers X-Evento-* de la funcion.
  */
 @RestController
 @RequestMapping("/api/bff/usuarios")
@@ -52,17 +57,26 @@ public class UsuarioBffController {
 
         return validacionRol
                 .then(usuariosClient.agregar(usuario))
-                .map(creado -> ResponseEntity.status(HttpStatus.CREATED).body(creado));
+                .map(resp -> EventoHeaders.reenviar(resp, HttpStatus.CREATED));
     }
 
     @PutMapping("/{id}")
-    public Mono<UsuarioDto> modificar(@PathVariable long id, @Valid @RequestBody UsuarioDto usuario) {
-        return usuariosClient.modificar(id, usuario);
+    public Mono<ResponseEntity<UsuarioDto>> modificar(@PathVariable long id, @Valid @RequestBody UsuarioDto usuario) {
+        Mono<Void> validacionRol = usuario.getIdRol() != null
+                ? rolesClient.obtener(usuario.getIdRol())
+                        .switchIfEmpty(Mono.error(new ResponseStatusException(
+                                HttpStatus.BAD_REQUEST, "El rol " + usuario.getIdRol() + " no existe")))
+                        .then()
+                : Mono.empty();
+
+        return validacionRol
+                .then(usuariosClient.modificar(id, usuario))
+                .map(resp -> EventoHeaders.reenviar(resp, HttpStatus.OK));
     }
 
     @DeleteMapping("/{id}")
     public Mono<ResponseEntity<Void>> eliminar(@PathVariable long id) {
         return usuariosClient.eliminar(id)
-                .thenReturn(ResponseEntity.noContent().build());
+                .map(resp -> ResponseEntity.noContent().headers(EventoHeaders.copiar(resp.getHeaders())).build());
     }
 }

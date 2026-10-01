@@ -19,6 +19,9 @@ funciones:
     key: ${FUNCION_EVENTOS_PRODUCTORA_KEY:}
   eventos-consumidora:
     base-url: ${FUNCION_EVENTOS_CONSUMIDORA_URL:http://function-eventos-consumidora:80/api}
+  # Sumativa 3 (semana 8): consumidoras de eventos de Usuarios y Roles (solo consultas)
+  eventos-usuarios-roles:
+    base-url: ${FUNCION_EVENTOS_UR_URL:http://function-eventos-usuarios-roles:80/api}
 
 # RF6 (semana 7): roles que pueden generar eventos
 eventos:

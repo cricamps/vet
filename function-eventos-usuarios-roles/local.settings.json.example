@@ -1,0 +1,15 @@
+{
+  "IsEncrypted": false,
+  "Values": {
+    "FUNCTIONS_WORKER_RUNTIME": "java",
+    "AzureWebJobsStorage": "UseDevelopmentStorage=true",
+    "ORACLE_DB_URL": "<connect string de la base usuariosroles (mismo valor que func-usuarios)>",
+    "ORACLE_DB_USER": "ADMIN",
+    "ORACLE_DB_PASSWORD": "<password>",
+    "ROL_POR_DEFECTO": "CONSULTA"
+  },
+  "Host": {
+    "LocalHttpPort": 7074,
+    "CORS": "*"
+  }
+}

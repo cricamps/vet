@@ -2,6 +2,7 @@ package cl.duoc.dsy2207.bff.client;
 
 import cl.duoc.dsy2207.bff.dto.RolDto;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
@@ -36,27 +37,27 @@ public class RolesFunctionClient {
                 .bodyToMono(RolDto.class);
     }
 
-    public Mono<RolDto> agregar(RolDto rol) {
+    public Mono<ResponseEntity<RolDto>> agregar(RolDto rol) {
         return webClient.post()
                 .uri("/roles")
                 .bodyValue(rol)
                 .retrieve()
-                .bodyToMono(RolDto.class);
+                .toEntity(RolDto.class);
     }
 
-    public Mono<RolDto> modificar(long id, RolDto rol) {
+    public Mono<ResponseEntity<RolDto>> modificar(long id, RolDto rol) {
         return webClient.put()
                 .uri("/roles/{id}", id)
                 .bodyValue(rol)
                 .retrieve()
-                .bodyToMono(RolDto.class);
+                .toEntity(RolDto.class);
     }
 
-    public Mono<Void> eliminar(long id) {
+    public Mono<ResponseEntity<Void>> eliminar(long id) {
         return webClient.delete()
                 .uri("/roles/{id}", id)
                 .retrieve()
-                .bodyToMono(Void.class);
+                .toBodilessEntity();
     }
 }
 //Commit

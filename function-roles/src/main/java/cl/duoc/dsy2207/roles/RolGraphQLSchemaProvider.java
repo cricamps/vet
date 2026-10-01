@@ -12,6 +12,7 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.Reader;
 import java.nio.charset.StandardCharsets;
+import java.util.logging.Logger;
 
 /**
  * Construye el {@link GraphQL} ejecutable para la entidad Rol a partir del
@@ -28,6 +29,7 @@ import java.nio.charset.StandardCharsets;
 public final class RolGraphQLSchemaProvider {
 
     private static volatile GraphQL graphQL;
+    private static final Logger LOG = Logger.getLogger(RolGraphQLSchemaProvider.class.getName());
 
     private RolGraphQLSchemaProvider() {
     }
@@ -47,6 +49,9 @@ public final class RolGraphQLSchemaProvider {
 
     private static GraphQL build() {
         RolDao dao = new RolDao();
+        // Semana 8: las mutations pasan por RolService para publicar el mismo
+        // evento de dominio que las funciones REST (canal = "GraphQL").
+        RolService service = new RolService(dao);
 
         TypeDefinitionRegistry typeRegistry = new SchemaParser().parse(readSchema());
 
@@ -55,9 +60,9 @@ public final class RolGraphQLSchemaProvider {
                         .dataFetcher("roles", listarRolesFetcher(dao))
                         .dataFetcher("rol", obtenerRolFetcher(dao)))
                 .type("Mutation", builder -> builder
-                        .dataFetcher("agregarRol", agregarRolFetcher(dao))
-                        .dataFetcher("modificarRol", modificarRolFetcher(dao))
-                        .dataFetcher("eliminarRol", eliminarRolFetcher(dao)))
+                        .dataFetcher("agregarRol", agregarRolFetcher(service))
+                        .dataFetcher("modificarRol", modificarRolFetcher(service))
+                        .dataFetcher("eliminarRol", eliminarRolFetcher(service)))
                 .build();
 
         GraphQLSchema schema = new SchemaGenerator().makeExecutableSchema(typeRegistry, wiring);
@@ -75,25 +80,25 @@ public final class RolGraphQLSchemaProvider {
         };
     }
 
-    private static DataFetcher<?> agregarRolFetcher(RolDao dao) {
+    private static DataFetcher<?> agregarRolFetcher(RolService service) {
         return env -> {
             String nombreRol = env.getArgument("nombreRol");
-            return dao.agregar(new Rol(null, nombreRol));
+            return service.agregar(new Rol(null, nombreRol), "GraphQL", LOG).resultado();
         };
     }
 
-    private static DataFetcher<?> modificarRolFetcher(RolDao dao) {
+    private static DataFetcher<?> modificarRolFetcher(RolService service) {
         return env -> {
             long id = Long.parseLong(env.<String>getArgument("id"));
             String nombreRol = env.getArgument("nombreRol");
-            return dao.modificar(id, new Rol(id, nombreRol));
+            return service.modificar(id, new Rol(id, nombreRol), "GraphQL", LOG).resultado();
         };
     }
 
-    private static DataFetcher<?> eliminarRolFetcher(RolDao dao) {
+    private static DataFetcher<?> eliminarRolFetcher(RolService service) {
         return env -> {
             long id = Long.parseLong(env.<String>getArgument("id"));
-            return dao.eliminar(id);
+            return service.eliminar(id, "GraphQL", LOG).resultado();
         };
     }
 

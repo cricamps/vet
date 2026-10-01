@@ -12,6 +12,7 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.Reader;
 import java.nio.charset.StandardCharsets;
+import java.util.logging.Logger;
 
 /**
  * Construye el {@link GraphQL} ejecutable para la entidad Usuario a partir
@@ -27,6 +28,7 @@ import java.nio.charset.StandardCharsets;
 public final class UsuarioGraphQLSchemaProvider {
 
     private static volatile GraphQL graphQL;
+    private static final Logger LOG = Logger.getLogger(UsuarioGraphQLSchemaProvider.class.getName());
 
     private UsuarioGraphQLSchemaProvider() {
     }
@@ -46,6 +48,9 @@ public final class UsuarioGraphQLSchemaProvider {
 
     private static GraphQL build() {
         UsuarioDao dao = new UsuarioDao();
+        // Semana 8: las mutations pasan por UsuarioService para publicar el mismo
+        // evento de dominio que las funciones REST (canal = "GraphQL").
+        UsuarioService service = new UsuarioService(dao);
 
         TypeDefinitionRegistry typeRegistry = new SchemaParser().parse(readSchema());
 
@@ -54,9 +59,9 @@ public final class UsuarioGraphQLSchemaProvider {
                         .dataFetcher("usuarios", listarUsuariosFetcher(dao))
                         .dataFetcher("usuario", obtenerUsuarioFetcher(dao)))
                 .type("Mutation", builder -> builder
-                        .dataFetcher("agregarUsuario", agregarUsuarioFetcher(dao))
-                        .dataFetcher("modificarUsuario", modificarUsuarioFetcher(dao))
-                        .dataFetcher("eliminarUsuario", eliminarUsuarioFetcher(dao)))
+                        .dataFetcher("agregarUsuario", agregarUsuarioFetcher(service))
+                        .dataFetcher("modificarUsuario", modificarUsuarioFetcher(service))
+                        .dataFetcher("eliminarUsuario", eliminarUsuarioFetcher(service)))
                 .build();
 
         GraphQLSchema schema = new SchemaGenerator().makeExecutableSchema(typeRegistry, wiring);
@@ -74,18 +79,19 @@ public final class UsuarioGraphQLSchemaProvider {
         };
     }
 
-    private static DataFetcher<?> agregarUsuarioFetcher(UsuarioDao dao) {
+    private static DataFetcher<?> agregarUsuarioFetcher(UsuarioService service) {
         return env -> {
             String nombreUsuario = env.getArgument("nombreUsuario");
             String profesionUsuario = env.getArgument("profesionUsuario");
             String pais = env.getArgument("pais");
             String idRolArg = env.getArgument("idRol");
             Long idRol = idRolArg != null ? Long.parseLong(idRolArg) : null;
-            return dao.agregar(new Usuario(null, nombreUsuario, profesionUsuario, pais, idRol));
+            return service.agregar(new Usuario(null, nombreUsuario, profesionUsuario, pais, idRol), "GraphQL", LOG)
+                    .resultado();
         };
     }
 
-    private static DataFetcher<?> modificarUsuarioFetcher(UsuarioDao dao) {
+    private static DataFetcher<?> modificarUsuarioFetcher(UsuarioService service) {
         return env -> {
             long id = Long.parseLong(env.<String>getArgument("id"));
             String nombreUsuario = env.getArgument("nombreUsuario");
@@ -93,14 +99,15 @@ public final class UsuarioGraphQLSchemaProvider {
             String pais = env.getArgument("pais");
             String idRolArg = env.getArgument("idRol");
             Long idRol = idRolArg != null ? Long.parseLong(idRolArg) : null;
-            return dao.modificar(id, new Usuario(id, nombreUsuario, profesionUsuario, pais, idRol));
+            return service.modificar(id, new Usuario(id, nombreUsuario, profesionUsuario, pais, idRol), "GraphQL", LOG)
+                    .resultado();
         };
     }
 
-    private static DataFetcher<?> eliminarUsuarioFetcher(UsuarioDao dao) {
+    private static DataFetcher<?> eliminarUsuarioFetcher(UsuarioService service) {
         return env -> {
             long id = Long.parseLong(env.<String>getArgument("id"));
-            return dao.eliminar(id);
+            return service.eliminar(id, "GraphQL", LOG).resultado();
         };
     }
 

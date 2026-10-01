@@ -193,3 +193,30 @@ Cliente -> BFF (EC2) --valida usuario/rol--> function-usuarios / function-roles
 Seguridad: el endpoint/key del topic y la conexión a Oracle se configuran como **App Settings**; ninguna credencial está en el repositorio (`local.settings.json` sigue en `.gitignore`, se incluyen solo archivos `local.settings.json.example`).
 
 > **Nota:** el código se escribió en un entorno sin acceso a Maven Central: la lógica de validación y parseo de eventos (tests unitarios) se compiló y probó allí, pero el `mvn clean package` completo de los tres módulos debe correrse en el equipo local antes de desplegar (ver `docs/despliegue-s7.md`).
+
+## 14. Semana 8 — Actividad Sumativa 3: "Aplicando tecnologías de eventos en arquitecturas cloud"
+
+Se completa el **Sistema de Gestión de Usuarios y Roles** (Sumativa 1) con **Azure Event Grid**. Las funciones CRUD de usuarios y roles pasan a ser **generadoras** de eventos y una nueva Function App Java con **Event Grid trigger** los **consume**:
+
+```
+Postman -> BFF (EC2) -> func-usuarios / func-roles --CRUD--> Oracle USUARIOS/ROLES
+                         func-usuarios / func-roles --publica--> Event Grid Topic usuarios-roles-events-*
+           Topic --sub-auditoria (todos)----------------------> AuditarEventoUsuariosRoles --> UR_AUDITORIA_EVENTOS
+           Topic --sub-usuarios (Usuario*)--------------------> ProcesarEventoUsuario      --> USUARIOS.ID_ROL + UR_NOTIFICACIONES
+           Topic --sub-roles (RolModificado, RolEliminado)----> ProcesarEventoRol          --> USUARIOS.ID_ROL + UR_NOTIFICACIONES
+           BFF --GET--> ConsultarEventosUsuariosRoles --> Oracle (último eslabón)
+```
+
+| Carpeta / archivo | Contenido |
+|---|---|
+| `function-usuarios/` | `UsuarioService` + `PublicadorEventos`: REST y GraphQL publican `UsuarioCreado`, `UsuarioModificado`, `UsuarioEliminado`; headers `X-Evento-*` en la respuesta; tests |
+| `function-roles/` | `RolService` + `PublicadorEventos`: `RolCreado`, `RolModificado`, `RolEliminado`; eliminar un rol en uso ya no falla por la FK (desasigna en transacción); el rol `CONSULTA` está protegido (409); tests |
+| `function-eventos-usuarios-roles/` | `AuditarEventoUsuariosRoles`, `ProcesarEventoUsuario`, `ProcesarEventoRol` (`@EventGridTrigger`, idempotentes) + `GET /api/consultas/{recurso}`; tests |
+| `bff-service/` | Reenvía `X-Evento-*`, valida rol también al modificar usuario, nuevo `EventosUsuariosRolesController` (`/api/bff/usuarios-roles/eventos/*`, `/api/bff/usuarios/{id}/notificaciones`) |
+| `db/script_eventos_s8.sql` | Tablas `UR_AUDITORIA_EVENTOS`, `UR_EVENTOS_PROCESADOS`, `UR_NOTIFICACIONES` en la base `usuariosroles` |
+| `docs/arquitectura-eda-s8.md` (+ `.png`, `.mmd`) | Requerimiento cubierto con eventos, diagrama, finalidad de cada componente, catálogo de eventos, decisiones de diseño |
+| `docs/despliegue-s8.md` | Paso a paso: SQL → topic → generadoras → consumidoras → suscripciones → pruebas → BFF (SSM) → Git/PR |
+| `docs/postman-s8.md` + `docs/postman_collection_s8.json` | Flujo completo con tests automáticos (rol por defecto, cambio de rol, rol eliminado en uso, 409, baja, GraphQL) |
+
+Credenciales: endpoint/key del topic y conexión Oracle como **App Settings**; nada sensible en el repositorio.
+
