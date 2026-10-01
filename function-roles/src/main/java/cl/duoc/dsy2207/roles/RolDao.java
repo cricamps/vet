@@ -79,6 +79,54 @@ public class RolDao {
         }
     }
 
+    /**
+     * Eliminar Rol desasignando a sus usuarios (Semana 8).
+     *
+     * USUARIOS.ID_ROL tiene FK a ROLES, por lo que un DELETE directo fallaria si
+     * el rol esta en uso. En una sola transaccion: (1) se guardan los ids de los
+     * usuarios afectados, (2) se dejan con ID_ROL = NULL y (3) se borra el rol.
+     * Los ids viajan en el evento RolEliminado y la funcion consumidora los
+     * reasigna al rol por defecto (consistencia eventual).
+     *
+     * @return ids de los usuarios afectados, o null si el rol no existia.
+     */
+    public List<Long> eliminarDesasignando(long id) throws SQLException {
+        try (Connection con = DbConnection.getConnection()) {
+            con.setAutoCommit(false);
+            try {
+                List<Long> afectados = new ArrayList<>();
+                try (PreparedStatement ps = con.prepareStatement(
+                        "SELECT ID_USUARIO FROM USUARIOS WHERE ID_ROL = ? ORDER BY ID_USUARIO")) {
+                    ps.setLong(1, id);
+                    try (ResultSet rs = ps.executeQuery()) {
+                        while (rs.next()) {
+                            afectados.add(rs.getLong(1));
+                        }
+                    }
+                }
+                try (PreparedStatement ps = con.prepareStatement(
+                        "UPDATE USUARIOS SET ID_ROL = NULL WHERE ID_ROL = ?")) {
+                    ps.setLong(1, id);
+                    ps.executeUpdate();
+                }
+                int borrados;
+                try (PreparedStatement ps = con.prepareStatement("DELETE FROM ROLES WHERE ID_ROL = ?")) {
+                    ps.setLong(1, id);
+                    borrados = ps.executeUpdate();
+                }
+                if (borrados == 0) {
+                    con.rollback();
+                    return null;
+                }
+                con.commit();
+                return afectados;
+            } catch (SQLException e) {
+                con.rollback();
+                throw e;
+            }
+        }
+    }
+
     private Rol map(ResultSet rs) throws SQLException {
         return new Rol(rs.getLong("ID_ROL"), rs.getString("NOMBRE_ROL"));
     }

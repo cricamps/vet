@@ -20,10 +20,18 @@ import java.util.Optional;
  * como quedaron definidas en el diagrama de arquitectura del equipo
  * (ARQ-USUARIOS-ROLES), mas una funcion auxiliar para obtener un rol por
  * id que usa el BFF al validar asignaciones.
+ *
+ * Semana 8 (Sumativa 3): Agregar/Modificar/Eliminar son ademas FUNCIONES
+ * GENERADORAS DE EVENTOS: tras confirmar el cambio en Oracle publican
+ * RolCreado / RolModificado / RolEliminado en Azure Event Grid (ver RolService).
+ * EliminarRol ya no falla por la FK de USUARIOS: desasigna a los usuarios en la
+ * misma transaccion y la funcion consumidora los reasigna al rol por defecto.
+ * El rol por defecto (CONSULTA) no se puede eliminar: responde 409.
  */
 public class RolFunction {
 
     private final RolDao dao = new RolDao();
+    private final RolService service = new RolService(dao);
     private final Gson gson = new Gson();
 
     @FunctionName("ListarRoles")
@@ -66,10 +74,10 @@ public class RolFunction {
         context.getLogger().info("POST /api/roles");
         try {
             Rol body = gson.fromJson(request.getBody().orElse("{}"), Rol.class);
-            Rol creado = dao.agregar(body);
-            return request.createResponseBuilder(HttpStatus.CREATED)
+            RolService.Operacion<Rol> op = service.agregar(body, "REST", context.getLogger());
+            return conEvento(request.createResponseBuilder(HttpStatus.CREATED), op.evento())
                     .header("Content-Type", "application/json")
-                    .body(gson.toJson(creado))
+                    .body(gson.toJson(op.resultado()))
                     .build();
         } catch (SQLException e) {
             return errorJson(request, e);
@@ -85,10 +93,12 @@ public class RolFunction {
         context.getLogger().info("PUT /api/roles/" + id);
         try {
             Rol body = gson.fromJson(request.getBody().orElse("{}"), Rol.class);
-            boolean actualizado = dao.modificar(id, body);
-            if (actualizado) {
-                body.setIdRol(id);
-                return okJson(request, body);
+            RolService.Operacion<Boolean> op = service.modificar(id, body, "REST", context.getLogger());
+            if (op.resultado()) {
+                return conEvento(request.createResponseBuilder(HttpStatus.OK), op.evento())
+                        .header("Content-Type", "application/json")
+                        .body(gson.toJson(body))
+                        .build();
             }
             return notFound(request, "Rol " + id + " no encontrado");
         } catch (SQLException e) {
@@ -104,14 +114,36 @@ public class RolFunction {
             final ExecutionContext context) {
         context.getLogger().info("DELETE /api/roles/" + id);
         try {
-            boolean eliminado = dao.eliminar(id);
-            if (eliminado) {
-                return request.createResponseBuilder(HttpStatus.NO_CONTENT).build();
+            RolService.Operacion<Boolean> op = service.eliminar(id, "REST", context.getLogger());
+            if (op.resultado()) {
+                return conEvento(request.createResponseBuilder(HttpStatus.NO_CONTENT), op.evento()).build();
             }
             return notFound(request, "Rol " + id + " no encontrado");
+        } catch (RolService.RolProtegidoException e) {
+            return request.createResponseBuilder(HttpStatus.CONFLICT)
+                    .header("Content-Type", "application/json")
+                    .body(gson.toJson(new ErrorBody(e.getMessage())))
+                    .build();
         } catch (SQLException e) {
             return errorJson(request, e);
         }
+    }
+
+    /**
+     * Semana 8: informa en headers si el evento de dominio quedo publicado en
+     * Event Grid (el BFF y Postman los pueden mostrar sin cambiar el body).
+     */
+    private HttpResponseMessage.Builder conEvento(HttpResponseMessage.Builder builder,
+                                                  PublicadorEventos.Resultado evento) {
+        if (evento == null) {
+            return builder;
+        }
+        builder.header("X-Evento-Tipo", evento.eventType())
+               .header("X-Evento-Publicado", String.valueOf(evento.publicado()));
+        if (evento.idEvento() != null) {
+            builder.header("X-Evento-Id", evento.idEvento());
+        }
+        return builder;
     }
 
     private HttpResponseMessage okJson(HttpRequestMessage<Optional<String>> request, Object body) {

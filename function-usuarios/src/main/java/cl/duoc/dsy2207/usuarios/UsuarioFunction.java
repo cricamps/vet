@@ -24,10 +24,16 @@ import java.util.Optional;
  * Cada funcion es pequena, enfocada y stateless (buena practica de la
  * guia de la semana 3): abre su propia conexion JDBC, hace su trabajo y
  * responde.
+ *
+ * Semana 8 (Sumativa 3): Agregar/Modificar/Eliminar son ademas FUNCIONES
+ * GENERADORAS DE EVENTOS: tras confirmar el cambio en Oracle publican
+ * UsuarioCreado / UsuarioModificado / UsuarioEliminado en Azure Event Grid
+ * (ver UsuarioService y PublicadorEventos).
  */
 public class UsuarioFunction {
 
     private final UsuarioDao dao = new UsuarioDao();
+    private final UsuarioService service = new UsuarioService(dao);
     private final Gson gson = new Gson();
 
     @FunctionName("ListarUsuarios")
@@ -70,10 +76,10 @@ public class UsuarioFunction {
         context.getLogger().info("POST /api/usuarios");
         try {
             Usuario body = gson.fromJson(request.getBody().orElse("{}"), Usuario.class);
-            Usuario creado = dao.agregar(body);
-            return request.createResponseBuilder(HttpStatus.CREATED)
+            UsuarioService.Operacion<Usuario> op = service.agregar(body, "REST", context.getLogger());
+            return conEvento(request.createResponseBuilder(HttpStatus.CREATED), op.evento())
                     .header("Content-Type", "application/json")
-                    .body(gson.toJson(creado))
+                    .body(gson.toJson(op.resultado()))
                     .build();
         } catch (SQLException e) {
             return errorJson(request, e);
@@ -89,10 +95,12 @@ public class UsuarioFunction {
         context.getLogger().info("PUT /api/usuarios/" + id);
         try {
             Usuario body = gson.fromJson(request.getBody().orElse("{}"), Usuario.class);
-            boolean actualizado = dao.modificar(id, body);
-            if (actualizado) {
-                body.setIdUsuario(id);
-                return okJson(request, body);
+            UsuarioService.Operacion<Boolean> op = service.modificar(id, body, "REST", context.getLogger());
+            if (op.resultado()) {
+                return conEvento(request.createResponseBuilder(HttpStatus.OK), op.evento())
+                        .header("Content-Type", "application/json")
+                        .body(gson.toJson(body))
+                        .build();
             }
             return notFound(request, "Usuario " + id + " no encontrado");
         } catch (SQLException e) {
@@ -108,14 +116,31 @@ public class UsuarioFunction {
             final ExecutionContext context) {
         context.getLogger().info("DELETE /api/usuarios/" + id);
         try {
-            boolean eliminado = dao.eliminar(id);
-            if (eliminado) {
-                return request.createResponseBuilder(HttpStatus.NO_CONTENT).build();
+            UsuarioService.Operacion<Boolean> op = service.eliminar(id, "REST", context.getLogger());
+            if (op.resultado()) {
+                return conEvento(request.createResponseBuilder(HttpStatus.NO_CONTENT), op.evento()).build();
             }
             return notFound(request, "Usuario " + id + " no encontrado");
         } catch (SQLException e) {
             return errorJson(request, e);
         }
+    }
+
+    /**
+     * Semana 8: informa en headers si el evento de dominio quedo publicado en
+     * Event Grid (el BFF y Postman los pueden mostrar sin cambiar el body).
+     */
+    private HttpResponseMessage.Builder conEvento(HttpResponseMessage.Builder builder,
+                                                  PublicadorEventos.Resultado evento) {
+        if (evento == null) {
+            return builder;
+        }
+        builder.header("X-Evento-Tipo", evento.eventType())
+               .header("X-Evento-Publicado", String.valueOf(evento.publicado()));
+        if (evento.idEvento() != null) {
+            builder.header("X-Evento-Id", evento.idEvento());
+        }
+        return builder;
     }
 
     private HttpResponseMessage okJson(HttpRequestMessage<Optional<String>> request, Object body) {
