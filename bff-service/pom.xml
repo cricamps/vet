@@ -15,7 +15,7 @@
     <artifactId>bff-service</artifactId>
     <version>1.0.0</version>
     <name>bff-service</name>
-    <description>BFF que orquesta las funciones serverless de Usuarios y Roles - DSY2207 Semana 3</description>
+    <description>BFF que orquesta (REST y GraphQL) las funciones serverless de Usuarios y Roles - DSY2207 EFT</description>
 
     <properties>
         <java.version>17</java.version>

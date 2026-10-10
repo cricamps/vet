@@ -85,8 +85,8 @@ public class RolDao {
      * USUARIOS.ID_ROL tiene FK a ROLES, por lo que un DELETE directo fallaria si
      * el rol esta en uso. En una sola transaccion: (1) se guardan los ids de los
      * usuarios afectados, (2) se dejan con ID_ROL = NULL y (3) se borra el rol.
-     * Los ids viajan en el evento RolEliminado y la funcion consumidora los
-     * reasigna al rol por defecto (consistencia eventual).
+     * Los ids viajan en el evento RolEliminado; la funcion consumidora
+     * confirma que quedaron sin rol y les notifica que el rol fue quitado.
      *
      * @return ids de los usuarios afectados, o null si el rol no existia.
      */

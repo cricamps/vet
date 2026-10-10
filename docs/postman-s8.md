@@ -4,7 +4,7 @@ Importar `docs/postman_collection_s8.json` y completar las **variables de la col
 
 | Variable | Valor |
 |---|---|
-| `bffUrl` | `http://100.52.252.86:8080` (IP al 30-09-2026; cambia si se reinicia el lab; ver `despliegue-s8.md` paso 7) |
+| `bffUrl` | `http://54.89.126.54:8080` (IP al 30-09-2026; cambia si se reinicia el lab; ver `despliegue-s8.md` paso 7) |
 | `usuariosFuncUrl` | `https://func-usuarios-dsy2207-18514.azurewebsites.net/api` |
 | `consUrl` | `https://func-eventos-usuarios-roles-dsy2207.azurewebsites.net/api` |
 | `idRolPorDefecto` | `5` (CONSULTA en la base `usuariosroles`) |

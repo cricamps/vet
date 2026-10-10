@@ -17,7 +17,7 @@ public class EstadoController {
         return Map.of(
                 "servicio", "bff-service",
                 "estado", "UP",
-                "descripcion", "BFF orquestador de Usuarios y Roles + eventos Azure Event Grid - DSY2207 S8"
+                "descripcion", "BFF orquestador de Usuarios y Roles (REST + GraphQL) + eventos Azure Event Grid - DSY2207 EFT"
         );
     }
 }

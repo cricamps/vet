@@ -108,7 +108,6 @@ public class RolService {
     static Map<String, Object> datosEliminacion(Rol rol, List<Long> afectados, String canal) {
         Map<String, Object> data = datosRol(rol, canal);
         data.put("usuariosAfectados", afectados);
-        data.put("rolReemplazo", rolPorDefecto());
         return data;
     }
 }

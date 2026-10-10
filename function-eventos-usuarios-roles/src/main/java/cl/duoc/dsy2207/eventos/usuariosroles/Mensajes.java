@@ -12,6 +12,7 @@ public final class Mensajes {
     public static final String BAJA = "BAJA";
     public static final String REASIGNACION_ROL = "REASIGNACION_ROL";
     public static final String ROL_RENOMBRADO = "ROL_RENOMBRADO";
+    public static final String ROL_QUITADO = "ROL_QUITADO";
 
     private Mensajes() {
     }
@@ -35,6 +36,10 @@ public final class Mensajes {
 
     public static String reasignacion(String rolEliminado, String rolNuevo) {
         return "El rol " + rolEliminado + " fue eliminado del sistema: se te reasigno el rol " + rolNuevo + ".";
+    }
+
+    public static String rolQuitado(String rolEliminado) {
+        return "El rol " + rolEliminado + " fue eliminado del sistema y se quito de tu cuenta: quedas sin rol asignado.";
     }
 
     public static String rolRenombrado(String nombreAnterior, String nombreNuevo) {

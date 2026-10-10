@@ -17,7 +17,7 @@ import java.util.logging.Logger;
  *
  *   sub-auditoria (sin filtro)                          -> AuditarEventoUsuariosRoles
  *   sub-usuarios  (UsuarioCreado/Modificado/Eliminado)  -> ProcesarEventoUsuario
- *   sub-roles     (RolModificado/RolEliminado)          -> ProcesarEventoRol
+ *   sub-roles     (RolModificado/RolEliminado)          -> ProcesarEventoRol (RolEliminado: quita el rol)
  *
  * Asi un UsuarioCreado queda auditado Y genera la asignacion de rol por defecto +
  * la bienvenida, sin que function-usuarios sepa que existen estos consumidores.

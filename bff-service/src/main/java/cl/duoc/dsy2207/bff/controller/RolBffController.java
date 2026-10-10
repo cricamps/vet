@@ -16,8 +16,8 @@ import java.util.List;
  * correspondiente.
  *
  * Semana 8: al eliminar un rol en uso, function-roles desasigna a sus usuarios
- * y publica RolEliminado; la funcion consumidora los reasigna al rol por
- * defecto. Eliminar el rol por defecto (CONSULTA) responde 409.
+ * (quedan sin rol) y publica RolEliminado; la funcion consumidora confirma
+ * que el rol fue quitado y notifica a los afectados. Eliminar el rol por defecto (CONSULTA) responde 409.
  */
 @RestController
 @RequestMapping("/api/bff/roles")

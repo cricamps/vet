@@ -7,7 +7,7 @@
   "variable": [
     {
       "key": "bffUrl",
-      "value": "http://<ip-ec2>:8080"
+      "value": "http://54.242.121.151:8080"
     },
     {
       "key": "prodUrl",
@@ -23,11 +23,11 @@
     },
     {
       "key": "idUsuarioAdmin",
-      "value": "1"
+      "value": "3"
     },
     {
       "key": "idUsuarioConsulta",
-      "value": "<id del usuario con rol CONSULTA>"
+      "value": "20"
     },
     {
       "key": "idTurno",

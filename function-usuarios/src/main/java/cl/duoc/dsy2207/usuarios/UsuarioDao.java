@@ -95,13 +95,15 @@ public class UsuarioDao {
     }
 
     private Usuario map(ResultSet rs) throws SQLException {
-        long idRol = rs.getLong("ID_ROL");
+        // wasNull() debe consultarse justo despues de leer ID_ROL (si no, mira la ultima columna leida)
+        long idRolLeido = rs.getLong("ID_ROL");
+        Long idRol = rs.wasNull() ? null : idRolLeido;
         return new Usuario(
             rs.getLong("ID_USUARIO"),
             rs.getString("NOMBRE_USUARIO"),
             rs.getString("PROFESION_USUARIO"),
             rs.getString("PAIS"),
-            rs.wasNull() ? null : idRol
+            idRol
         );
     }
 }

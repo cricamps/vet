@@ -25,7 +25,8 @@ import java.util.Optional;
  * GENERADORAS DE EVENTOS: tras confirmar el cambio en Oracle publican
  * RolCreado / RolModificado / RolEliminado en Azure Event Grid (ver RolService).
  * EliminarRol ya no falla por la FK de USUARIOS: desasigna a los usuarios en la
- * misma transaccion y la funcion consumidora los reasigna al rol por defecto.
+ * misma transaccion (quedan sin rol) y la funcion consumidora les notifica
+ * que el rol fue quitado (requerimiento EFT).
  * El rol por defecto (CONSULTA) no se puede eliminar: responde 409.
  */
 public class RolFunction {

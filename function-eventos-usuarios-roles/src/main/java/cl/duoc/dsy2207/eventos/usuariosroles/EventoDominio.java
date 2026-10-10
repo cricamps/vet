@@ -22,7 +22,7 @@ import java.util.List;
  *   UsuariosRoles.UsuarioEliminado  data: foto del usuario antes de eliminarlo
  *   UsuariosRoles.RolCreado         data: idRol, nombreRol, canal
  *   UsuariosRoles.RolModificado     data: idRol, nombreRol, nombreAnterior, canal
- *   UsuariosRoles.RolEliminado      data: idRol, nombreRol, usuariosAfectados[], rolReemplazo, canal
+ *   UsuariosRoles.RolEliminado      data: idRol, nombreRol, usuariosAfectados[], canal
  */
 public record EventoDominio(String id, String topic, String subject, String eventType,
                             String eventTime, String dataVersion, JsonObject data, String json) {

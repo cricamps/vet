@@ -7,6 +7,7 @@ import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 /** Pruebas del contrato de los eventos de Rol y de la regla del rol por defecto (Semana 8). */
@@ -24,13 +25,13 @@ class RolServiceTest {
     }
 
     @Test
-    void rolEliminadoIncluyeUsuariosAfectadosYRolDeReemplazo() {
+    void rolEliminadoIncluyeUsuariosAfectadosSinRolDeReemplazo() {
         Map<String, Object> data = RolService.datosEliminacion(new Rol(10L, "SOPORTE"), List.of(21L, 22L), "REST");
 
         assertEquals(10L, data.get("idRol"));
         assertEquals("SOPORTE", data.get("nombreRol"));
         assertEquals(List.of(21L, 22L), data.get("usuariosAfectados"));
-        assertEquals("CONSULTA", data.get("rolReemplazo"));
+        assertFalse(data.containsKey("rolReemplazo"));
     }
 
     @Test

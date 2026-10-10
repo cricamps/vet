@@ -1,7 +1,7 @@
 {
   "info": {
-    "name": "DSY2207 S8 - Usuarios y Roles con Azure Event Grid (Sumativa 3)",
-    "description": "BFF (AWS) -> funciones CRUD generadoras (Azure) -> Event Grid topic usuarios-roles-events -> funciones consumidoras (Azure) -> Oracle usuariosroles. Ejecutar las carpetas en orden; ajustar las variables antes.",
+    "name": "DSY2207 EFT - Sistema de Gestion de Usuarios y Roles (REST + GraphQL + Event Grid)",
+    "description": "Evaluacion Final Transversal (Semana 9). Todo pasa por el BFF (REST y GraphQL). Requerimientos de eventos: (1) usuario creado -> rol por defecto; (2) rol eliminado -> se quita el rol a sus usuarios (idRol = null).",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "item": [
@@ -263,7 +263,7 @@
             "method": "DELETE",
             "header": [],
             "url": "{{bffUrl}}/api/bff/roles/{{idRolNuevo}}",
-            "description": "Antes de la S8 fallaba por la FK. Ahora function-roles desasigna y publica RolEliminado con usuariosAfectados; la consumidora los reasigna a CONSULTA."
+            "description": "Requerimiento 2: function-roles deja a los usuarios del rol con ID_ROL = NULL en la misma transaccion y publica RolEliminado con usuariosAfectados; la consumidora ProcesarEventoRol confirma que el rol fue quitado y notifica ROL_QUITADO."
           },
           "event": [
             {
@@ -292,12 +292,12 @@
           ]
         },
         {
-          "name": "1.9 Ver usuario (reasignado a CONSULTA)",
+          "name": "1.9 Ver usuario (rol quitado: idRol null)",
           "request": {
             "method": "GET",
             "header": [],
             "url": "{{bffUrl}}/api/bff/usuarios/{{idUsuarioNuevo}}",
-            "description": ""
+            "description": "El usuario queda SIN rol: se le quito el rol eliminado (no se reasigna)."
           },
           "event": [
             {
@@ -315,7 +315,7 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('reasignado al rol por defecto', () => pm.expect(pm.response.json().idRol).to.eql(Number(pm.collectionVariables.get('idRolPorDefecto'))));"
+                  "pm.test('rol quitado: idRol null', () => pm.expect(pm.response.json().idRol).to.be.oneOf([null, undefined]));"
                 ]
               }
             }
@@ -327,7 +327,7 @@
             "method": "GET",
             "header": [],
             "url": "{{bffUrl}}/api/bff/usuarios/{{idUsuarioNuevo}}/notificaciones",
-            "description": "BIENVENIDA, ROL_ASIGNADO, CAMBIO_ROL x2, ROL_RENOMBRADO, REASIGNACION_ROL."
+            "description": "BIENVENIDA, ROL_ASIGNADO, CAMBIO_ROL x2, ROL_RENOMBRADO, ROL_QUITADO."
           },
           "event": [
             {
@@ -336,7 +336,7 @@
                 "type": "text/javascript",
                 "exec": [
                   "const tipos = pm.response.json().map(n => n.TIPO);",
-                  "pm.test('REASIGNACION_ROL registrada', () => pm.expect(tipos).to.include('REASIGNACION_ROL'));"
+                  "pm.test('ROL_QUITADO registrada', () => pm.expect(tipos).to.include('ROL_QUITADO'));"
                 ]
               }
             }
@@ -484,10 +484,321 @@
       ]
     },
     {
-      "name": "3. Funciones directas (GraphQL y consumidora)",
+      "name": "3. GraphQL via BFF (integracion FaaS <-> BFF)",
       "item": [
         {
-          "name": "3.1 GraphQL: agregarUsuario sin rol (canal GraphQL)",
+          "name": "3.1 Query roles",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{bffUrl}}/api/bff/graphql/roles",
+            "description": "Lista de roles via BFF -> RolesGraphQL.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"query\": \"{ roles { idRol nombreRol } }\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK sin errores GraphQL', () => { pm.response.to.have.status(200); pm.expect(pm.response.json().errors).to.be.oneOf([undefined, null]); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "3.2 Mutation agregarUsuario SIN rol",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{bffUrl}}/api/bff/graphql/usuarios",
+            "description": "Requerimiento 1 por el canal GraphQL: publica UsuarioCreado (canal = GraphQL).",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"query\": \"mutation { agregarUsuario(nombreUsuario: \\\"Usuario GraphQL EFT\\\", profesionUsuario: \\\"QA\\\", pais: \\\"Chile\\\") { idUsuario nombreUsuario idRol } }\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK sin errores GraphQL', () => { pm.response.to.have.status(200); pm.expect(pm.response.json().errors).to.be.oneOf([undefined, null]); });",
+                  "pm.collectionVariables.set('idUsuarioGql', pm.response.json().data.agregarUsuario.idUsuario);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "3.3 Query usuario (rol por defecto asignado)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{bffUrl}}/api/bff/graphql/usuarios",
+            "description": "La consumidora asigno CONSULTA.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"query\": \"{ usuario(id: {{idUsuarioGql}}) { idUsuario nombreUsuario idRol } }\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Event Grid entrega de forma asincrona: se espera unos segundos",
+                  "setTimeout(() => {}, 5000);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK sin errores GraphQL', () => { pm.response.to.have.status(200); pm.expect(pm.response.json().errors).to.be.oneOf([undefined, null]); });",
+                  "pm.test('rol por defecto', () => pm.expect(Number(pm.response.json().data.usuario.idRol)).to.eql(Number(pm.collectionVariables.get('idRolPorDefecto'))));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "3.4 Mutation agregarRol",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{bffUrl}}/api/bff/graphql/roles",
+            "description": "Publica RolCreado.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"query\": \"mutation { agregarRol(nombreRol: \\\"TEMPORAL GQL\\\") { idRol nombreRol } }\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK sin errores GraphQL', () => { pm.response.to.have.status(200); pm.expect(pm.response.json().errors).to.be.oneOf([undefined, null]); });",
+                  "pm.collectionVariables.set('idRolGql', pm.response.json().data.agregarRol.idRol);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "3.5 Mutation modificarUsuario (asignar rol)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{bffUrl}}/api/bff/graphql/usuarios",
+            "description": "Publica UsuarioModificado (cambioDeRol = true).",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"query\": \"mutation { modificarUsuario(id: {{idUsuarioGql}}, nombreUsuario: \\\"Usuario GraphQL EFT\\\", profesionUsuario: \\\"QA\\\", pais: \\\"Chile\\\", idRol: {{idRolGql}}) }\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK sin errores GraphQL', () => { pm.response.to.have.status(200); pm.expect(pm.response.json().errors).to.be.oneOf([undefined, null]); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "3.6 Mutation eliminarRol EN USO",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{bffUrl}}/api/bff/graphql/roles",
+            "description": "Requerimiento 2 por el canal GraphQL: RolEliminado -> se quita el rol.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"query\": \"mutation { eliminarRol(id: {{idRolGql}}) }\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Event Grid entrega de forma asincrona: se espera unos segundos",
+                  "setTimeout(() => {}, 5000);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK sin errores GraphQL', () => { pm.response.to.have.status(200); pm.expect(pm.response.json().errors).to.be.oneOf([undefined, null]); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "3.7 Query usuario (rol quitado)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{bffUrl}}/api/bff/graphql/usuarios",
+            "description": "idRol debe ser null.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"query\": \"{ usuario(id: {{idUsuarioGql}}) { idUsuario nombreUsuario idRol } }\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Event Grid entrega de forma asincrona: se espera unos segundos",
+                  "setTimeout(() => {}, 5000);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK sin errores GraphQL', () => { pm.response.to.have.status(200); pm.expect(pm.response.json().errors).to.be.oneOf([undefined, null]); });",
+                  "pm.test('rol quitado', () => pm.expect(pm.response.json().data.usuario.idRol).to.be.oneOf([null, undefined]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "3.8 Mutation eliminarUsuario",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{bffUrl}}/api/bff/graphql/usuarios",
+            "description": "Publica UsuarioEliminado (BAJA).",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"query\": \"mutation { eliminarUsuario(id: {{idUsuarioGql}}) }\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK sin errores GraphQL', () => { pm.response.to.have.status(200); pm.expect(pm.response.json().errors).to.be.oneOf([undefined, null]); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "4. Funciones directas (sin BFF, solo diagnostico)",
+      "item": [
+        {
+          "name": "4.1 GraphQL: agregarUsuario sin rol (canal GraphQL)",
           "request": {
             "method": "POST",
             "header": [
@@ -522,7 +833,7 @@
           ]
         },
         {
-          "name": "3.2 Ver usuario GraphQL (rol asignado)",
+          "name": "4.2 Ver usuario GraphQL (rol asignado)",
           "request": {
             "method": "GET",
             "header": [],
@@ -552,7 +863,7 @@
           ]
         },
         {
-          "name": "3.3 GraphQL: eliminarUsuario",
+          "name": "4.3 GraphQL: eliminarUsuario",
           "request": {
             "method": "POST",
             "header": [
@@ -586,7 +897,7 @@
           ]
         },
         {
-          "name": "3.4 Consulta directa a la consumidora",
+          "name": "4.4 Consulta directa a la consumidora",
           "request": {
             "method": "GET",
             "header": [],
@@ -600,7 +911,7 @@
   "variable": [
     {
       "key": "bffUrl",
-      "value": "http://54.89.126.54:8080"
+      "value": "http://34.204.17.155:8080"
     },
     {
       "key": "usuariosFuncUrl",
@@ -624,6 +935,14 @@
     },
     {
       "key": "idUsuarioGraphQL",
+      "value": ""
+    },
+    {
+      "key": "idUsuarioGql",
+      "value": ""
+    },
+    {
+      "key": "idRolGql",
       "value": ""
     }
   ]

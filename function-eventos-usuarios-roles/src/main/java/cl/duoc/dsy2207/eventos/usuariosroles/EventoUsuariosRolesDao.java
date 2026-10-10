@@ -190,31 +190,45 @@ public class EventoUsuariosRolesDao {
     }
 
     /**
-     * RolEliminado: function-roles dejo a los usuarios afectados con ID_ROL = NULL;
-     * aqui se les reasigna el rol por defecto y se les notifica (consistencia eventual).
+     * RolEliminado (requerimiento EFT: "se les debera quitar" el rol).
+     * function-roles ya dejo a los usuarios afectados con ID_ROL = NULL en la
+     * misma transaccion del DELETE (la FK FK_USUARIOS_ROL lo exige). Aqui la
+     * consumidora reacciona al evento: garantiza que ningun usuario siga
+     * apuntando al rol eliminado (idempotente) y notifica a cada afectado que
+     * su rol fue quitado. NO se reasigna ningun rol.
      */
     public Resultado rolEliminado(Connection con, EventoDominio ev) throws SQLException, RechazoNegocio {
         List<Long> afectados = ev.datoListaLong("usuariosAfectados");
-        String rolEliminado = Mensajes.nombreRol(ev.dato("nombreRol"), ev.datoLong("idRol"));
+        Long idRol = ev.datoLong("idRol");
+        String rolEliminado = Mensajes.nombreRol(ev.dato("nombreRol"), idRol);
+        int corregidos = 0;
+        if (idRol != null) {
+            try (PreparedStatement ps = con.prepareStatement(
+                    "UPDATE USUARIOS SET ID_ROL = NULL WHERE ID_ROL = ?")) {
+                ps.setLong(1, idRol);
+                corregidos = ps.executeUpdate();
+            }
+        }
         if (afectados.isEmpty()) {
             return Resultado.sinAccion("el rol " + rolEliminado + " no tenia usuarios asignados");
         }
-        RolActual def = rolPorDefecto(con);
-        List<Long> reasignados = new ArrayList<>();
+        List<Long> sinRol = new ArrayList<>();
         try (PreparedStatement ps = con.prepareStatement(
-                "UPDATE USUARIOS SET ID_ROL = ? WHERE ID_USUARIO = ? AND ID_ROL IS NULL")) {
+                "SELECT 1 FROM USUARIOS WHERE ID_USUARIO = ? AND ID_ROL IS NULL")) {
             for (Long idUsuario : afectados) {
-                ps.setLong(1, def.id());
-                ps.setLong(2, idUsuario);
-                if (ps.executeUpdate() > 0) {
-                    reasignados.add(idUsuario);
-                    notificar(con, idUsuario, ev.id(), Mensajes.REASIGNACION_ROL,
-                            Mensajes.reasignacion(rolEliminado, def.nombre()));
+                ps.setLong(1, idUsuario);
+                try (ResultSet rs = ps.executeQuery()) {
+                    if (rs.next()) {
+                        sinRol.add(idUsuario);
+                        notificar(con, idUsuario, ev.id(), Mensajes.ROL_QUITADO,
+                                Mensajes.rolQuitado(rolEliminado));
+                    }
                 }
             }
         }
-        return Resultado.procesado(reasignados.size() + " de " + afectados.size()
-                + " usuario(s) reasignados a " + def.nombre() + " " + reasignados);
+        return Resultado.procesado("rol " + rolEliminado + " quitado a " + sinRol.size() + " de "
+                + afectados.size() + " usuario(s) " + sinRol
+                + (corregidos > 0 ? "; " + corregidos + " referencia(s) residual(es) limpiadas" : ""));
     }
 
     // ================================================================ consultas
